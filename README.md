@@ -68,6 +68,17 @@ npm run build
 
 The Python tests cover seed reproducibility/idempotency, salary validation and history, audit logging, server-side search and pagination, statistics grouping, and HTTP behavior. The frontend tests cover currency formatting and shared display helpers. All tests use local deterministic fixtures and need no external service.
 
+## Demo recording
+
+Install the Playwright Chromium browser once, then generate a browser walkthrough:
+
+```sh
+npx playwright install chromium
+npm run demo:video
+```
+
+The script starts an isolated API and Vite server, seeds a temporary SQLite database, and records the overview, employee search, profile, and salary editor. It saves one salary change in that temporary database to demonstrate the complete workflow; the database is removed when recording finishes. The WebM video is written to `artifacts/demo/compwise-walkthrough.webm`.
+
 ## Deployment and next steps
 
 Run the built app behind an organization-approved TLS reverse proxy only after adding SSO/authorization, operator-derived audit identities, backups, CSRF/origin protection, data-retention controls, and a security review. A cloud deployment is not configured in this repository because no deployment environment or credentials were supplied.

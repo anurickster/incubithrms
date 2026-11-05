@@ -1,5 +1,6 @@
 import json
 import mimetypes
+import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
@@ -131,8 +132,9 @@ class SalaryHandler(BaseHTTPRequestHandler):
 def main() -> None:
     initialize()
     seed_database()
-    server = ThreadingHTTPServer(("127.0.0.1", 8000), SalaryHandler)
-    print(f"API ready at http://127.0.0.1:8000 (database: {database_path()})")
+    port = int(os.environ.get("PORT", "8000"))
+    server = ThreadingHTTPServer(("127.0.0.1", port), SalaryHandler)
+    print(f"API ready at http://127.0.0.1:{port} (database: {database_path()})")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
