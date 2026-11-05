@@ -63,7 +63,7 @@ try {
   const apiPort = await availablePort();
   const webPort = await availablePort();
 
-  const api = startProcess("python3", ["-m", "backend.server"], {
+  const api = startProcess(process.execPath, [path.join(root, "backend", "server.js")], {
     env: {
       ...process.env,
       PORT: String(apiPort),

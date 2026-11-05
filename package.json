@@ -7,9 +7,9 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --test",
-    "api": "python3 -m backend.server",
-    "seed": "python3 -m backend.seed",
+    "test": "node --test 'backend/test/*.test.js' 'frontend/src/lib/*.test.js'",
+    "api": "node backend/server.js",
+    "seed": "node backend/seed.js",
     "demo:video": "node scripts/demo-video.js"
   },
   "dependencies": {
