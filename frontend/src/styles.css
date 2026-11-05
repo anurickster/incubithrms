@@ -417,3 +417,73 @@ tbody tr:last-child td { border-bottom: 0; }
   .employee-modal { width: 100%; max-height: min(87vh, 780px); padding: 20px 18px 17px; border-radius: 14px 14px 0 0; }
   .profile-details-grid { gap: 13px; }
 }
+
+/* Preserve readable type at the common 100% desktop viewport. */
+@media (min-width: 601px) {
+  .sidebar { width: 220px; }
+  .main-content { margin-left: 220px; }
+  .topbar { padding-right: clamp(24px, 3vw, 40px); padding-left: clamp(24px, 3vw, 40px); }
+  .page-content { padding-right: clamp(24px, 3vw, 40px); padding-left: clamp(24px, 3vw, 40px); }
+  .workspace-label { font-size: 11px; }
+  .nav-item { min-height: 46px; font-size: 14px; }
+  .nav-count { font-size: 11px; }
+  .privacy-card strong, .profile-details strong { font-size: 12px; }
+  .privacy-card div > span, .profile-details small { font-size: 11px; }
+  .breadcrumbs, .topbar-date { font-size: 12px; }
+  .demo-badge { font-size: 10px; }
+  .eyebrow { font-size: 10px; }
+  .page-heading h1 { font-size: clamp(27px, 2.2vw, 32px); }
+  .page-heading p { font-size: 14px; }
+  .primary-button, .secondary-button { min-height: 40px; padding-right: 15px; padding-left: 15px; font-size: 13px; }
+  .stat-card { min-height: 155px; padding: 18px 20px 14px; }
+  .stat-caption { font-size: 10px; }
+  .stat-value { font-size: 29px; }
+  .stat-unit { font-size: 14px; }
+  .stat-label { font-size: 13px; }
+  .foot-indicator, .foot-note { font-size: 11px; }
+  .dashboard-grid { grid-template-columns: minmax(0, 1.45fr) minmax(285px, 1fr); gap: 17px; }
+  .pay-card, .countries-card { min-height: 318px; padding-top: 19px; }
+  .section-title { font-size: 14px; }
+  .section-subtitle { font-size: 12px; }
+  .period-tag { font-size: 9px; }
+  .currency-row { min-height: 37px; grid-template-columns: 26px 46px minmax(35px, 1fr) minmax(105px, auto) minmax(84px, auto); gap: 10px; }
+  .currency-code, .currency-average, .currency-headcount { font-size: 12px; }
+  .currency-average small, .currency-headcount small { font-size: 10px; }
+  .pay-footnote { font-size: 11px; }
+  .country-row { min-height: 34px; grid-template-columns: 25px minmax(75px, 1fr) minmax(25px, .75fr) 40px; }
+  .country-flag { width: 22px; height: 22px; font-size: 8px; }
+  .country-name, .country-count, .country-link { font-size: 12px; }
+  .compensation-card { padding-top: 18px; }
+  .breakdown-tabs button, .breakdown-controls select { font-size: 11px; }
+  .breakdown-controls select { height: 34px; }
+  .salary-breakdown-grid { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 11px; }
+  .breakdown-currency strong, .breakdown-metrics strong { font-size: 12px; }
+  .breakdown-currency > span:last-child, .breakdown-metrics span { font-size: 9px; }
+  .breakdown-footnote { font-size: 10px; }
+  .table-heading { min-height: 72px; padding: 15px 20px; }
+  .filters { gap: 10px; padding: 0 18px 15px; }
+  .search-field, .filters select { height: 40px; font-size: 12px; }
+  th { height: 42px; font-size: 11px; }
+  td { height: 64px; font-size: 12px; }
+  th:first-child, td:first-child { padding-left: 20px; }
+  .employee-name { font-size: 12px; }
+  .employee-id, .currency-tag { font-size: 10px; }
+  .date-cell { font-size: 11px; }
+  .avatar-small { width: 35px; height: 35px; font-size: 10px; }
+  .pagination { min-height: 56px; font-size: 11px; }
+  .pagination-actions button { min-height: 34px; font-size: 11px; }
+  .page-footer { font-size: 11px; }
+}
+
+@media (min-width: 601px) and (max-width: 1100px) {
+  .sidebar { width: 204px; }
+  .main-content { margin-left: 204px; }
+  .topbar { padding-right: 22px; padding-left: 22px; }
+  .page-content { padding-right: 22px; padding-left: 22px; }
+  .stats-grid { gap: 11px; }
+  .stat-card { padding-right: 14px; padding-left: 14px; }
+  .dashboard-grid { grid-template-columns: minmax(0, 1fr); }
+  .pay-card, .countries-card { min-height: unset; }
+  .country-list { display: grid; grid-template-columns: 1fr 1fr; column-gap: 22px; }
+  .country-link { margin-top: 12px; }
+}
