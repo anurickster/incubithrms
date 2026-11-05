@@ -87,6 +87,8 @@ function App() {
   const [notice, setNotice] = useState("");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const employeeRequestGeneration = useRef(0);
+  const employeeQuery = useRef(null);
+  employeeQuery.current = { page, sort, direction, query, country, department, currency };
 
   useEffect(() => {
     const timer = window.setTimeout(() => setQuery(queryInput.trim()), 250);
@@ -99,23 +101,28 @@ function App() {
   }, []);
 
   const loadEmployees = useCallback(async () => {
+    const filters = employeeQuery.current;
     const params = new URLSearchParams({
-      page: String(page),
+      page: String(filters.page),
       page_size: String(PAGE_SIZE),
-      sort,
-      direction,
+      sort: filters.sort,
+      direction: filters.direction,
     });
-    if (query) params.set("q", query);
-    if (country) params.set("country", country);
-    if (department) params.set("department", department);
-    if (currency) params.set("currency", currency);
+    if (filters.query) params.set("q", filters.query);
+    if (filters.country) params.set("country", filters.country);
+    if (filters.department) params.set("department", filters.department);
+    if (filters.currency) params.set("currency", filters.currency);
     const requestId = ++employeeRequestGeneration.current;
     const result = await request(`/api/employees?${params}`);
-    return { result, requestId };
-  }, [country, currency, department, direction, page, query, sort]);
+    return { result, requestId, filters };
+  }, []);
 
-  const applyEmployeeResponse = useCallback(({ result, requestId }) => {
-    if (requestId === employeeRequestGeneration.current) setEmployees(result);
+  const applyEmployeeResponse = useCallback(({ result, requestId, filters }) => {
+    const current = employeeQuery.current;
+    const isCurrentQuery = Object.keys(current).every((key) => current[key] === filters[key]);
+    if (requestId === employeeRequestGeneration.current && isCurrentQuery) {
+      setEmployees(result);
+    }
   }, []);
 
   useEffect(() => {
@@ -143,7 +150,18 @@ function App() {
       .catch((cause) => { if (active) setError(cause.message); })
       .finally(() => { if (active) setDirectoryLoading(false); });
     return () => { active = false; };
-  }, [applyEmployeeResponse, loadEmployees, loading]);
+  }, [
+    applyEmployeeResponse,
+    country,
+    currency,
+    department,
+    direction,
+    loadEmployees,
+    loading,
+    page,
+    query,
+    sort,
+  ]);
 
   const visibleCurrencies = useMemo(() => stats?.currencies ?? [], [stats]);
   const maxCountryCount = Math.max(...(stats?.countries?.map((row) => row.headcount) ?? [1]), 1);
