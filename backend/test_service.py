@@ -101,6 +101,7 @@ class SalaryServiceTests(unittest.TestCase):
     def test_salary_validation_rejects_bad_values_and_backdating(self):
         employee = get_employee("ACME-00001", self.db_path)
         later = (date.fromisoformat(employee["salary_effective_date"]) + timedelta(days=1)).isoformat()
+        future = (date.today() + timedelta(days=1)).isoformat()
         invalid_payloads = (
             {"base_salary": -1, "currency": "USD", "effective_date": later},
             {"base_salary": True, "currency": "USD", "effective_date": later},
@@ -109,6 +110,7 @@ class SalaryServiceTests(unittest.TestCase):
             {"base_salary": 100, "currency": "US", "effective_date": later},
             {"base_salary": 100, "currency": "ZZZ", "effective_date": later},
             {"base_salary": 100, "currency": "USD", "effective_date": "2026-02-30"},
+            {"base_salary": 100, "currency": "USD", "effective_date": future},
         )
         for payload in invalid_payloads:
             with self.subTest(payload=payload), self.assertRaises(ValidationError):

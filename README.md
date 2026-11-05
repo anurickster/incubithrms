@@ -56,7 +56,7 @@ The app is not a payroll system. It intentionally excludes authentication, role 
 | `GET` | `/api/employees/{employee_id}` | Employee profile and salary history |
 | `PATCH` | `/api/employees/{employee_id}` | Validate and record a salary change |
 
-`GET /api/employees` accepts `q`, `country`, `department`, `currency`, `sort`, `direction`, `page`, and `page_size` query parameters. The page size is capped at 100. Salary updates require `base_salary`, `currency`, and `effective_date` (`YYYY-MM-DD`). Unsupported currencies, invalid amounts, duplicate effective dates, and backdated changes return a JSON `400` error.
+`GET /api/employees` accepts `q`, `country`, `department`, `currency`, `sort`, `direction`, `page`, and `page_size` query parameters. The page size is capped at 100. Salary updates require `base_salary`, `currency`, and `effective_date` (`YYYY-MM-DD`). Only changes effective today or earlier are accepted; future scheduling is deliberately unsupported, so reported current salaries cannot include a pending change. Unsupported currencies, invalid amounts, duplicate effective dates, backdated changes, and future dates return a JSON `400` error.
 
 ## Tests
 

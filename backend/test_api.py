@@ -3,6 +3,7 @@ import os
 import tempfile
 import threading
 import unittest
+from datetime import date, timedelta
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError
@@ -88,7 +89,7 @@ class SalaryApiTests(unittest.TestCase):
         self.assertEqual(stats["compensation_by_department"][0]["currency"], "INR")
 
     def test_patch_salary_updates_current_value_and_history(self):
-        effective = "2030-01-02"
+        effective = date.today().isoformat()
         status, employee = self.call_api(
             "/api/employees/ACME-TEST01",
             "PATCH",
@@ -98,6 +99,19 @@ class SalaryApiTests(unittest.TestCase):
         self.assertEqual(employee["base_salary"], 65_000.25)
         self.assertEqual(employee["salary_history"][0]["effective_date"], effective)
         self.assertEqual(employee["salary_history"][0]["previous_salary"], 50_000)
+
+    def test_future_salary_change_is_rejected_without_changing_current_salary(self):
+        future = (date.today() + timedelta(days=1)).isoformat()
+        status, result = self.call_api(
+            "/api/employees/ACME-TEST01",
+            "PATCH",
+            {"base_salary": "65000.25", "currency": "INR", "effective_date": future},
+        )
+        self.assertEqual(status, 400)
+        self.assertIn("Future", result["error"])
+        _, employee = self.call_api("/api/employees/ACME-TEST01")
+        self.assertEqual(employee["base_salary"], 50_000)
+        self.assertEqual(len(employee["salary_history"]), 1)
 
     def test_invalid_salary_and_missing_employee_return_clear_errors(self):
         status, result = self.call_api(

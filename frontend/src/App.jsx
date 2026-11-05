@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatCompactCount, formatMoney, initials } from "./lib/format.js";
 
 const PAGE_SIZE = 10;
@@ -86,6 +86,7 @@ function App() {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const employeeRequestGeneration = useRef(0);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setQuery(queryInput.trim()), 250);
@@ -108,17 +109,21 @@ function App() {
     if (country) params.set("country", country);
     if (department) params.set("department", department);
     if (currency) params.set("currency", currency);
+    const requestId = ++employeeRequestGeneration.current;
     const result = await request(`/api/employees?${params}`);
-    setEmployees(result);
+    return { result, requestId };
   }, [country, currency, department, direction, page, query, sort]);
+
+  const applyEmployeeResponse = useCallback(({ result, requestId }) => {
+    if (requestId === employeeRequestGeneration.current) setEmployees(result);
+  }, []);
 
   useEffect(() => {
     let active = true;
-    Promise.all([request("/api/stats"), request(`/api/employees?page=1&page_size=${PAGE_SIZE}`)])
-      .then(([nextStats, nextEmployees]) => {
+    request("/api/stats")
+      .then((nextStats) => {
         if (!active) return;
         setStats(nextStats);
-        setEmployees(nextEmployees);
         setLoading(false);
       })
       .catch((cause) => {
@@ -134,10 +139,11 @@ function App() {
     let active = true;
     setDirectoryLoading(true);
     loadEmployees()
+      .then((response) => { if (active) applyEmployeeResponse(response); })
       .catch((cause) => { if (active) setError(cause.message); })
       .finally(() => { if (active) setDirectoryLoading(false); });
     return () => { active = false; };
-  }, [loadEmployees, loading]);
+  }, [applyEmployeeResponse, loadEmployees, loading]);
 
   const visibleCurrencies = useMemo(() => stats?.currencies ?? [], [stats]);
   const maxCountryCount = Math.max(...(stats?.countries?.map((row) => row.headcount) ?? [1]), 1);
@@ -149,8 +155,9 @@ function App() {
     breakdownType === "country" ? "compensation_by_country" : "compensation_by_department"
   ] ?? []).filter((row) => row[breakdownField] === selectedBreakdown?.[breakdownField]);
   const minimumEffectiveDate = selectedEmployee ? dateAfter(selectedEmployee.salary_effective_date) : "";
+  const salaryChangeUnavailable = selectedEmployee && minimumEffectiveDate > localToday();
   const defaultEffectiveDate = selectedEmployee
-    ? [localToday(), minimumEffectiveDate].sort().at(-1)
+    ? salaryChangeUnavailable ? localToday() : [localToday(), minimumEffectiveDate].sort().at(-1)
     : "";
 
   function updateFilter(setter, value) {
@@ -197,7 +204,8 @@ function App() {
       setSelectedEmployee(updated);
       setEditing(false);
       setNotice(`Salary updated for ${updated.first_name} ${updated.last_name}.`);
-      await Promise.all([loadStats(), loadEmployees()]);
+      const [, nextEmployees] = await Promise.all([loadStats(), loadEmployees()]);
+      applyEmployeeResponse(nextEmployees);
     } catch (cause) {
       setError(cause.message);
     } finally {
@@ -461,10 +469,10 @@ function App() {
                 </label>
                 <div className="form-row">
                   <label>Currency<select name="currency" defaultValue={selectedEmployee.currency}>{(visibleCurrencies.some((item) => item.currency === selectedEmployee.currency) ? visibleCurrencies : [...visibleCurrencies, { currency: selectedEmployee.currency }]).map((item) => <option key={item.currency}>{item.currency}</option>)}</select></label>
-                  <label>Effective date<input name="effective_date" type="date" min={minimumEffectiveDate} defaultValue={defaultEffectiveDate} required /></label>
+                  <label>Effective date<input name="effective_date" type="date" min={minimumEffectiveDate} max={localToday()} defaultValue={defaultEffectiveDate} required disabled={salaryChangeUnavailable} /></label>
                 </div>
-                <div className="form-note"><Icon name="clock" size={15} /><span>Changes are recorded in salary history and take effect on the selected date.</span></div>
-                <div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setEditing(false)}>Cancel</button><button type="submit" className="primary-button" disabled={saving}>{saving ? "Saving…" : "Save changes"}</button></div>
+                <div className="form-note"><Icon name="clock" size={15} /><span>{salaryChangeUnavailable ? "A salary change is already recorded for today. Another change can be made tomorrow." : "Changes are recorded in salary history and take effect on the selected date. Future-dated changes are not supported."}</span></div>
+                <div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setEditing(false)}>Cancel</button><button type="submit" className="primary-button" disabled={saving || salaryChangeUnavailable}>{saving ? "Saving…" : "Save changes"}</button></div>
               </form>
             ) : (
               <>

@@ -156,6 +156,8 @@ def update_salary(employee_id: str, payload: dict, path=None) -> dict | None:
         raise ValidationError("Effective date must be a valid YYYY-MM-DD date.") from None
     if parsed_date.isoformat() != effective_date:
         raise ValidationError("Effective date must be a valid YYYY-MM-DD date.")
+    if parsed_date > date.today():
+        raise ValidationError("Future salary changes are not supported.")
 
     initialize(path)
     with connect(path) as connection:
