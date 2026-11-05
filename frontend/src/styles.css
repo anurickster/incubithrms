@@ -487,3 +487,439 @@ tbody tr:last-child td { border-bottom: 0; }
   .country-list { display: grid; grid-template-columns: 1fr 1fr; column-gap: 22px; }
   .country-link { margin-top: 12px; }
 }
+
+
+/* --- Compensation Intelligence & Navigation Enhancements --- */
+.nav-badge-pill {
+  margin-left: auto;
+  padding: 2px 6px;
+  background: #ede9fe;
+  color: #6d28d9;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.banner-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 24px;
+  margin-bottom: 22px;
+  background: linear-gradient(135deg, #fbfaff 0%, #f4f2ff 100%);
+  border: 1px solid #e4dfff;
+  border-radius: 12px;
+}
+
+.banner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  margin-bottom: 8px;
+  background: #ede9fe;
+  color: #6558dc;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.5px;
+}
+
+.banner-content h3 {
+  margin: 0 0 6px 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #1e1b4b;
+}
+
+.banner-content p {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+  max-width: 680px;
+  line-height: 1.45;
+}
+
+.banner-cta {
+  flex-shrink: 0;
+  background: #6558dc;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(101, 88, 220, 0.22);
+}
+
+.banner-cta:hover {
+  background: #5549ce;
+}
+
+.table-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.export-button {
+  background: #fff;
+  border: 1px solid #d8dbe5;
+  color: #3e4459;
+  font-weight: 600;
+  font-size: 12px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.export-button:hover:not(:disabled) {
+  border-color: #6558dc;
+  color: #6558dc;
+  background: #fbfaff;
+}
+
+.clear-filters-btn {
+  font-size: 11px;
+  color: #6558dc;
+  margin-left: 4px;
+  text-decoration: underline;
+}
+
+.country-row.clickable {
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+  padding: 4px 6px;
+}
+
+.country-row.clickable:hover {
+  background: #f4f3ff;
+}
+
+/* Pay Intelligence Views */
+.pay-intelligence {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.intelligence-header {
+  padding: 22px 24px;
+}
+
+.sparkle-icon {
+  color: #7c3aed;
+}
+
+.question-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f3f7;
+}
+
+.question-pill {
+  padding: 8px 16px;
+  background: #f1f3f8;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #505668;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.18s ease;
+}
+
+.question-pill:hover {
+  background: #e9ecf4;
+  color: #202537;
+}
+
+.question-pill.active {
+  background: #6558dc;
+  color: #fff;
+  border-color: #5549ce;
+  box-shadow: 0 2px 8px rgba(101, 88, 220, 0.25);
+}
+
+.intelligence-section {
+  padding: 22px 24px;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.select-input {
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid #d5d9e2;
+  font-size: 12px;
+  color: #334155;
+}
+
+/* Role Pay Band Grid */
+.pay-band-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.pay-band-card {
+  background: #ffffff;
+  border: 1px solid #e8eaf0;
+  border-radius: 10px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.band-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.band-dept {
+  font-size: 10px;
+  font-weight: 700;
+  color: #6558dc;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.band-title {
+  margin: 3px 0 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.band-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.band-metric-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.band-metric-item.highlight .metric-val {
+  color: #6558dc;
+}
+
+.metric-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.4px;
+}
+
+.metric-val {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-top: 2px;
+}
+
+.range-track {
+  position: relative;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: visible;
+  margin: 4px 0 6px;
+}
+
+.range-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.range-median-marker {
+  position: absolute;
+  top: -4px;
+  width: 5px;
+  height: 16px;
+  background: #6558dc;
+  border-radius: 2px;
+  transform: translateX(-50%);
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+.band-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #64748b;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 8px;
+}
+
+/* Percentiles Table */
+.percentile-table-wrap {
+  overflow-x: auto;
+  margin-top: 14px;
+}
+
+.percentile-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.percentile-table th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  border-bottom: 2px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.percentile-table td {
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #1e293b;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.currency-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  background: #ede9fe;
+  color: #6558dc;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.mono-cell {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.quartile-cell {
+  color: #475569;
+}
+
+.median-cell {
+  color: #6558dc;
+  font-weight: 750;
+  background: #faf5ff;
+}
+
+.dispersion-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.dispersion-badge.normal {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.dispersion-badge.high {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fee2e2;
+}
+
+/* Cohort Cross-Explorer */
+.cohort-controls-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #eef2f6;
+}
+
+.control-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.control-item label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.control-item select {
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #d5d9e2;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fff;
+}
+
+.cohort-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.cohort-stat-card {
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #e8eaf0;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.cohort-stat-card.action-card {
+  background: #faf8ff;
+  border-color: #d8d3ff;
+  justify-content: center;
+}
+
+.cohort-action-desc {
+  font-size: 13px;
+  color: #475569;
+  margin-bottom: 14px;
+  line-height: 1.4;
+}
+
+.cohort-button {
+  width: 100%;
+}
