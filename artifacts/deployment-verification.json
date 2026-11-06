@@ -1,0 +1,43 @@
+{
+  "verified_at": "2026-11-06T08:12:36.388Z",
+  "origin": "https://compwise-acme-anurag.onrender.com",
+  "provider": "Render",
+  "plan": "Free",
+  "monthly_plan_price_usd": 0,
+  "service_id": "srv-dbmomkmi0phs73ceosk0",
+  "deployed_application_commit": "d49e0e5d6949fa7edf8e0920620dcb89542327fb",
+  "health": {
+    "http_status": 200,
+    "status": "healthy",
+    "employees": 10000
+  },
+  "browser": {
+    "profile": "Anurag",
+    "dashboard_rendered": true,
+    "temporary_storage_notice_visible": true
+  },
+  "cohort": {
+    "country": "Germany",
+    "department": "Engineering",
+    "headcount": 58,
+    "median_salary": 103062.36,
+    "currency": "EUR",
+    "directory_headcount": 58,
+    "csv_employee_rows": 58
+  },
+  "salary_smoke_test": {
+    "employee_id": "ACME-09991",
+    "adjustment": "plus 0.01 in original currency",
+    "save_status": 200,
+    "history_rows": 2,
+    "reload_preserved": true,
+    "identical_keyed_retry_replayed": true,
+    "conflicting_keyed_retry_status": 409
+  },
+  "limits": [
+    "SQLite files are temporary; hosted edits reset on service restart or redeploy",
+    "Free service spins down after inactivity and can take 50 seconds or longer to wake",
+    "All employee data is synthetic; no production authentication"
+  ],
+  "ci_url": "https://github.com/anurickster/incubithrms/actions/runs/42185248417"
+}

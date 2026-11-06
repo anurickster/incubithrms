@@ -2,7 +2,9 @@
 
 A React + Node.js application for an HR Manager to maintain annual base salaries and explore compensation across **10,000 fictional employees**, 10 countries, and 9 currencies. SQLite stores employee records, salary history, audit events, and retry responses.
 
-**Deployment status:** Free Render deployment is being configured. See [Render setup](docs/DEPLOYMENT.md). The free service uses temporary SQLite storage: salary edits reset when the server restarts, including after idle shutdown. All records are fictional.
+**[Open the live app](https://compwise-acme-anurag.onrender.com)** — deployed on Render Free ($0/month).
+
+The free service can take 50 seconds or more to wake after inactivity. Salary edits reset when the server restarts because SQLite uses temporary storage. All records are fictional. See [deployment and verification](docs/DEPLOYMENT.md).
 
 **[Watch the demo video](artifacts/demo/compwise-walkthrough.webm)** · [One-page requirements](docs/REQUIREMENTS.md) · [Architecture](artifacts/architecture.md) · [Decisions](artifacts/tradeoffs-and-decisions.md) · [AI workflow](artifacts/ai-workflow-prompts.md)
 

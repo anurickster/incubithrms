@@ -1,7 +1,7 @@
 # Free assessment demo. SQLite resets when Render restarts the service.
 services:
   - type: web
-    name: compwise-acme
+    name: compwise-acme-anurag
     runtime: node
     plan: free
     region: singapore

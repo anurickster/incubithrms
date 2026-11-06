@@ -26,4 +26,4 @@ Corrections and checks:
 Interactive browser checks use Anurag's Chrome profile. Automated tests and video recording use a disposable browser and temporary synthetic database. No genuine employee data is sent to an AI service by the application, and the product has no LLM integration.
 
 ## Remaining human decisions
-Complete the free Render sign-in/deployment, verify the live service and visible temporary-storage limitation, and send the final repository/live-app/video links in the original email thread. These steps are not implied by a local test pass.
+The free Render deployment and live API/UI checks are complete, with evidence in `deployment-verification.json`. Send the final repository/live-app/video links in the original email thread. These steps are not implied by a local test pass.
