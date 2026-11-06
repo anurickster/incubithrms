@@ -121,6 +121,18 @@ describe("Salary Service Tests", () => {
     assert.ok(result.employees[0].base_salary > 0);
   });
 
+  test("reseed after reopening preserves salary edits, history, and audit", () => {
+    const updated = updateSalary("ACME-00001", {
+      base_salary: "135000.50", currency: "USD", effective_date: "2025-01-01",
+    }, dbPath);
+    closeAllDatabases();
+    seedDatabase(dbPath);
+    assert.deepEqual(getEmployee("ACME-00001", dbPath), updated);
+    const db = openDatabase(dbPath);
+    assert.equal(db.prepare("SELECT COUNT(*) AS total FROM employees").get().total, 10000);
+    assert.equal(db.prepare("SELECT COUNT(*) AS total FROM audit_events WHERE employee_id = ?").get("ACME-00001").total, 1);
+  });
+
   test("sort field is validated and numeric salary order is correct", () => {
     const result = listEmployees({
       dbPath,

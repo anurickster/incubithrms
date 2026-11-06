@@ -283,7 +283,7 @@ export function createSalaryServer(options = {}) {
   return createServer(handler);
 }
 
-export function startServer(port = Number(process.env.PORT) || 8000, customDbPath) {
+export function startServer(port = Number(process.env.PORT) || 8000, customDbPath, host = process.env.HOST || "127.0.0.1") {
   const dbPath = getDatabasePath(customDbPath);
   initializeDatabase(dbPath);
   seedDatabase(dbPath);
@@ -294,7 +294,7 @@ export function startServer(port = Number(process.env.PORT) || 8000, customDbPat
     console.log(`\nReceived ${signal}. Shutting down gracefully...`);
     server.close(() => {
       closeAllDatabases();
-      console.log("Compwise server stopped and database connection pool closed.");
+      console.log("Compwise server stopped and database connections closed.");
       process.exit(0);
     });
     // Force shutdown if connections do not close within 5s
@@ -307,8 +307,8 @@ export function startServer(port = Number(process.env.PORT) || 8000, customDbPat
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));
 
-  server.listen(port, "127.0.0.1", () => {
-    console.log(`API ready at http://127.0.0.1:${port} (database: ${dbPath})`);
+  server.listen(port, host, () => {
+    console.log(`API ready at http://${host}:${server.address().port} (database: ${dbPath})`);
   });
   return server;
 }

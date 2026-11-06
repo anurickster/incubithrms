@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -202,6 +202,17 @@ try {
   await page.getByText("58 team members", { exact: false }).waitFor();
   assert.equal(new URL(page.url()).searchParams.get("country"), "Germany");
   console.log("✔ Country + department analytics match directory after reload");
+
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Export CSV" }).click(),
+  ]);
+  assert.equal(download.suggestedFilename(), "acme-employees.csv");
+  const csv = await readFile(await download.path(), "utf8");
+  const csvLines = csv.split("\r\n");
+  assert.equal(csvLines.length, 59);
+  assert.ok(csvLines.slice(1).every((line) => line.includes(",Germany,Engineering,")));
+  console.log("✔ CSV download contains exactly the selected cohort");
 
   // Check keyboard entry from an actual row button and focus restoration.
   const rowAction = page.locator("tbody tr.employee-row").first().getByRole("button");

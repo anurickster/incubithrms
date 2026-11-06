@@ -1,0 +1,23 @@
+# Paid service + disk. Review the Render cost estimate before applying.
+services:
+  - type: web
+    name: compwise-acme
+    runtime: node
+    plan: starter
+    region: singapore
+    branch: main
+    buildCommand: npm ci --include=dev && npm test && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: "off"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: SALARY_DB_PATH
+        value: /var/data/salaries.sqlite3
+    disk:
+      name: salary-data
+      mountPath: /var/data
+      sizeGB: 1
