@@ -11,7 +11,7 @@
 - [x] Create the free Render web service (no paid disk).
 - [x] Verify the live UI/API and visible free-tier data-reset notice.
 - [x] Add the actual deployed URL to README and this checklist.
-- [x] Confirm GitHub Actions succeeds for the deployed application commit (`d49e0e5`).
+- [x] Confirm the application checks pass in [GitHub Actions](https://github.com/anurickster/incubithrms/actions/workflows/ci.yml).
 - [x] Document that free-hosted SQLite edits reset on service restart.
 - [ ] Reply to the original assessment email with repository, live app, and video links.
 

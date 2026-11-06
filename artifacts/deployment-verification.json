@@ -39,5 +39,36 @@
     "Free service spins down after inactivity and can take 50 seconds or longer to wake",
     "All employee data is synthetic; no production authentication"
   ],
-  "ci_url": "https://github.com/anurickster/incubithrms/actions/runs/42185248417"
+  "ci_url": "https://github.com/anurickster/incubithrms/actions/runs/42185248417",
+  "latest_review": {
+    "verified_at": "2026-11-06T08:24:43.856Z",
+    "implementation_commit": "4c9964a",
+    "bundle": "index-Bwdkr4JI.js",
+    "health": "healthy",
+    "employees": 10000,
+    "full_name_search": {
+      "query": "Ethan Nakamura",
+      "matching_employees": 21,
+      "browser_verified": true,
+      "literal_percent_matches": 0
+    },
+    "cohort_count": 58,
+    "stale_edit": {
+      "employee_id": "ACME-09992",
+      "stale_save_status": 409,
+      "latest_value_preserved": true,
+      "reloaded_edit_succeeded": true,
+      "history_records": 3,
+      "identical_retry_replayed": true
+    },
+    "ci": {
+      "workflow": "Validate Compwise",
+      "url": "https://github.com/anurickster/incubithrms/actions/workflows/ci.yml"
+    },
+    "tests": {
+      "unit_api_helper": 48,
+      "development_browser": "passed",
+      "production_browser": "passed"
+    }
+  }
 }

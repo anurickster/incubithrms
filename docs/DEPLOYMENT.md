@@ -4,18 +4,21 @@ Status: **live and verified on 6 November 2026**.
 
 **Live URL:** https://compwise-acme-anurag.onrender.com
 
-Created in Anurag's Render account using the **Free ($0/month)** web-service plan, without a disk or paid add-ons. Service ID: `srv-dbmomkmi0phs73ceosk0`. The deployed application commit is `d49e0e5d6949fa7edf8e0920620dcb89542327fb`; later documentation-only commits record the live URL and evidence.
+Created in Anurag's Render account using the **Free ($0/month)** web-service plan, without a disk or paid add-ons. Service ID: `srv-dbmomkmi0phs73ceosk0`. The running application includes the salary concurrency and search improvements from implementation commit `4c9964a`. Documentation is maintained separately from application changes.
 
 ## Live verification
 
 - Render reports the first deployment Live; health returns HTTP 200 and 10,000 employees.
 - The React dashboard renders in Anurag's Chrome profile and displays the temporary-storage notice.
 - Germany + Engineering: 58 employees, median EUR 103,062.36; the directory and 58-row CSV agree.
-- A one-cent salary adjustment on fictional employee `ACME-09991` saved successfully and retained its previous value in two history records. Reloading the API returned the saved profile.
+- Full-name search for Ethan Nakamura returns 21 matching employees in the live UI. A literal `%` search returns zero.
+- Two one-cent adjustments on fictional employee `ACME-09992` retain three history records. Between them, a stale expected salary date returns HTTP 409 and preserves the latest salary; using the refreshed date succeeds.
 - An identical keyed retry replayed the original response. Reusing the key with a different amount returned HTTP 409.
-- [CI for the deployed application commit passed](https://github.com/anurickster/incubithrms/actions/runs/42185248417).
+- [CI and browser workflow results](https://github.com/anurickster/incubithrms/actions/workflows/ci.yml).
 
-These checks establish operation within the running instance, not durability through service restart. Raw evidence: [deployment-verification.json](../artifacts/deployment-verification.json).
+These checks establish operation within the running instance, not durability through service restart. Raw evidence: [deployment-verification.json](../artifacts/deployment-verification.json), including the initial deployment and the `latest_review` record.
+
+The salary dialog now shows save errors inline and offers a reload action on conflicts. Local development and production browser tests exercise stale-save rejection, reload, and successful resubmission. All 48 unit/API/helper tests pass.
 
 The free assessment demo serves the React UI and Node API from one web service. It automatically seeds 10,000 fictional employees. **Salary edits reset when Render restarts the service**, including after idle shutdown, because free web services cannot attach a persistent disk. The UI displays this limitation. It is not suitable for real employee information.
 
