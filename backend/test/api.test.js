@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable, Writable } from "node:stream";
 import test, { describe, beforeEach, afterEach } from "node:test";
-import { initializeDatabase, openDatabase } from "../database.js";
+import { closeAllDatabases, initializeDatabase, openDatabase } from "../database.js";
 import { createSalaryHandler } from "../server.js";
 
 function dispatchRequest(handler, { method = "GET", url = "/", headers = {}, body = null }) {
@@ -37,6 +37,7 @@ function dispatchRequest(handler, { method = "GET", url = "/", headers = {}, bod
 
   res.writeHead = (code, h = {}) => {
     statusCode = code;
+    res.statusCode = code;
     for (const [k, v] of Object.entries(h)) {
       resHeaders[k.toLowerCase()] = v;
     }
@@ -116,15 +117,36 @@ describe("Salary API HTTP Tests", () => {
   });
 
   afterEach(() => {
+    closeAllDatabases();
     if (tempDir) {
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
-  test("GET /api/health returns 200 ok", async () => {
+  test("GET /api/health returns 200 and deep database health", async () => {
     const res = await dispatchRequest(handler, { method: "GET", url: "/api/health" });
     assert.equal(res.status, 200);
-    assert.deepEqual(res.data, { status: "ok" });
+    assert.equal(res.data.status, "healthy");
+    assert.equal(res.data.database.status, "connected");
+    assert.equal(res.data.database.employee_count, 1);
+  });
+
+  test("GET /api/v1/health provides backwards-compatible API version alias", async () => {
+    const res = await dispatchRequest(handler, { method: "GET", url: "/api/v1/health" });
+    assert.equal(res.status, 200);
+    assert.equal(res.data.status, "healthy");
+  });
+
+  test("responses contain standard security headers and X-Request-Id correlation ID", async () => {
+    const customReqId = "trace-test-uuid-4321";
+    const res = await dispatchRequest(handler, {
+      method: "GET",
+      url: "/api/health",
+      headers: { "x-request-id": customReqId },
+    });
+    assert.equal(res.headers["x-request-id"], customReqId);
+    assert.equal(res.headers["x-content-type-options"], "nosniff");
+    assert.equal(res.headers["x-frame-options"], "DENY");
   });
 
   test("GET /api/stats returns statistics", async () => {
@@ -184,6 +206,36 @@ describe("Salary API HTTP Tests", () => {
     assert.equal(res.data.salary_history[0].effective_date, today);
     assert.equal(res.data.salary_history[0].previous_salary, 50000);
     assert.equal(res.data.salary_history[0].new_salary, 65000.25);
+  });
+
+  test("PATCH /api/employees/:id honours Idempotency-Key header on network retry", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const idempotencyKey = "req-idempotent-trace-777";
+
+    const payload = {
+      base_salary: "70000.00",
+      currency: "INR",
+      effective_date: today,
+    };
+
+    const first = await dispatchRequest(handler, {
+      method: "PATCH",
+      url: "/api/employees/ACME-TEST01",
+      headers: { "idempotency-key": idempotencyKey },
+      body: payload,
+    });
+    assert.equal(first.status, 200);
+    assert.equal(first.data.base_salary, 70000);
+
+    // Simulated network retry
+    const retry = await dispatchRequest(handler, {
+      method: "PATCH",
+      url: "/api/employees/ACME-TEST01",
+      headers: { "idempotency-key": idempotencyKey },
+      body: payload,
+    });
+    assert.equal(retry.status, 200);
+    assert.deepEqual(retry.data, first.data);
   });
 
   test("PATCH /api/employees/:id rejects future salary date", async () => {

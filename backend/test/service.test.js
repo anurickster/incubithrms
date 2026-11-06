@@ -3,9 +3,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test, { describe, beforeEach, afterEach } from "node:test";
-import { initializeDatabase, openDatabase } from "../database.js";
+import { closeAllDatabases, initializeDatabase, openDatabase } from "../database.js";
 import { buildEmployees, seedDatabase } from "../seed.js";
 import {
+  checkDatabaseHealth,
   exportEmployeesCsv,
   getEmployee,
   getStats,
@@ -67,6 +68,7 @@ describe("Salary Service Tests", () => {
   });
 
   afterEach(() => {
+    closeAllDatabases();
     if (tempDir) {
       rmSync(tempDir, { recursive: true, force: true });
     }
@@ -281,6 +283,33 @@ describe("Salary Service Tests", () => {
       assert.equal(cols[4], "United States");
       assert.equal(cols[9], "USD");
     }
+  });
+
+  test("checkDatabaseHealth returns connected status and employee count", () => {
+    const health = checkDatabaseHealth(dbPath);
+    assert.equal(health.status, "connected");
+    assert.equal(health.employee_count, 40);
+  });
+
+  test("idempotent updateSalary replay returns identical response without throwing duplicate error", () => {
+    const employeeId = "ACME-00001";
+    const employee = getEmployee(employeeId, dbPath);
+    const [y, m, d] = employee.salary_effective_date.split("-").map(Number);
+    const later = new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+    const idempotencyKey = "test-idem-key-99999";
+
+    const payload = { base_salary: 135000, currency: "USD", effective_date: later };
+    const firstCall = updateSalary(employeeId, payload, { dbPath, idempotencyKey });
+    assert.equal(firstCall.base_salary, 135000);
+
+    // Second call with same idempotency key should safely replay first response
+    const secondCall = updateSalary(employeeId, payload, { dbPath, idempotencyKey });
+    assert.deepEqual(secondCall, firstCall);
+
+    // Ensure database still only has 2 salary history rows (original seed + 1 update)
+    const db = openDatabase(dbPath);
+    const histCount = db.prepare("SELECT COUNT(*) AS c FROM salary_history WHERE employee_id = ?").get(employeeId).c;
+    assert.equal(histCount, 2);
   });
 });
 

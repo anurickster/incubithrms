@@ -2,9 +2,12 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, resolve } from "node:path";
 import { parse } from "node:url";
-import { getDatabasePath, initializeDatabase, ROOT } from "./database.js";
+import { randomUUID } from "node:crypto";
+import { performance } from "node:perf_hooks";
+import { closeAllDatabases, getDatabasePath, initializeDatabase, ROOT } from "./database.js";
 import { seedDatabase } from "./seed.js";
 import {
+  checkDatabaseHealth,
   exportEmployeesCsv,
   getEmployee,
   getStats,
@@ -34,11 +37,15 @@ const MIME_TYPES = {
 };
 
 export function sendJson(res, statusCode, data) {
+  res.statusCode = statusCode;
   const body = Buffer.from(JSON.stringify(data), "utf-8");
   res.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
     "Content-Length": body.length,
     "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
   });
   res.end(body);
 }
@@ -114,6 +121,8 @@ function serveStatic(req, res, pathname) {
   res.writeHead(200, {
     "Content-Type": mime,
     "Content-Length": stat.size,
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
   });
 
   const stream = createReadStream(filePath);
@@ -124,14 +133,54 @@ export function createSalaryHandler(options = {}) {
   const dbPath = options.dbPath || getDatabasePath();
 
   return async (req, res) => {
+    const startTime = performance.now();
+    const requestId = req.headers["x-request-id"] || randomUUID();
+
+    // Standard defense-in-depth security & traceability headers
+    res.setHeader("X-Request-Id", requestId);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    res.setHeader("Permissions-Policy", "geolocation=(), camera=(), microphone=()");
+
     const parsedUrl = parse(req.url, true);
-    const pathname = parsedUrl.pathname || "/";
+    let pathname = parsedUrl.pathname || "/";
     const method = req.method;
+
+    // API versioning compatibility: treat /api/v1/* as alias to /api/*
+    if (pathname.startsWith("/api/v1/")) {
+      pathname = "/api/" + pathname.slice("/api/v1/".length);
+    } else if (pathname === "/api/v1") {
+      pathname = "/api";
+    }
+
+    // Structured observability logging for non-test runs
+    if (process.env.NODE_ENV !== "test") {
+      res.on("finish", () => {
+        const duration = (performance.now() - startTime).toFixed(1);
+        console.log(`[${new Date().toISOString()}] ${method} ${req.url} ${res.statusCode} ${duration}ms [${requestId}]`);
+      });
+    }
 
     try {
       if (method === "GET") {
         if (pathname === "/api/health") {
-          sendJson(res, 200, { status: "ok" });
+          try {
+            const health = checkDatabaseHealth(dbPath);
+            sendJson(res, 200, {
+              status: "healthy",
+              timestamp: new Date().toISOString(),
+              uptime_seconds: Math.round(process.uptime()),
+              version: "1.0.0",
+              database: health,
+            });
+          } catch (healthErr) {
+            sendJson(res, 503, {
+              status: "degraded",
+              timestamp: new Date().toISOString(),
+              error: healthErr.message,
+            });
+          }
           return;
         }
 
@@ -159,6 +208,7 @@ export function createSalaryHandler(options = {}) {
             "Content-Length": buffer.length,
             "Content-Disposition": 'attachment; filename="acme-employees.csv"',
             "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
           });
           res.end(buffer);
           return;
@@ -199,8 +249,9 @@ export function createSalaryHandler(options = {}) {
       if (method === "PATCH") {
         if (pathname.startsWith("/api/employees/")) {
           const employeeId = decodeURIComponent(pathname.slice("/api/employees/".length));
+          const idempotencyKey = req.headers["idempotency-key"] || req.headers["x-idempotency-key"] || undefined;
           const body = await readJsonBody(req);
-          const updated = updateSalary(employeeId, body, dbPath);
+          const updated = updateSalary(employeeId, body, { dbPath, idempotencyKey });
           if (!updated) {
             sendJson(res, 404, { error: "Employee not found." });
             return;
@@ -235,6 +286,24 @@ export function startServer(port = Number(process.env.PORT) || 8000, customDbPat
   seedDatabase(dbPath);
 
   const server = createSalaryServer({ dbPath });
+
+  const shutdown = (signal) => {
+    console.log(`\nReceived ${signal}. Shutting down gracefully...`);
+    server.close(() => {
+      closeAllDatabases();
+      console.log("Compwise server stopped and database connection pool closed.");
+      process.exit(0);
+    });
+    // Force shutdown if connections do not close within 5s
+    setTimeout(() => {
+      console.error("Forceful shutdown after 5s timeout.");
+      process.exit(1);
+    }, 5000).unref();
+  };
+
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
+
   server.listen(port, "127.0.0.1", () => {
     console.log(`API ready at http://127.0.0.1:${port} (database: ${dbPath})`);
   });
