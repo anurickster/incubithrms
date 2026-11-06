@@ -171,3 +171,4 @@ if (process.argv[1] && process.argv[1].endsWith("seed.js")) {
   const duration = (performance.now() - start).toFixed(2);
   console.log(`Seed complete. Inserted: ${count} employees in ${duration}ms. Dataset: 10,000 deterministic employees.`);
 }
+

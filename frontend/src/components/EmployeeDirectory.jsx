@@ -337,3 +337,4 @@ export function Avatar({ firstName, lastName, small = false }) {
     </span>
   );
 }
+

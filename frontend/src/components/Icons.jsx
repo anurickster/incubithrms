@@ -102,3 +102,4 @@ export function Icon({ name, size = 20, className = "" }) {
 
   return <svg {...common}>{paths[name] || paths.overview}</svg>;
 }
+

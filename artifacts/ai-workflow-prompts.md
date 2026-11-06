@@ -40,3 +40,4 @@ In accordance with the assessment expectations, AI was used intentionally across
   > "Refactor the UI to provide the HR manager with actionable answers to compensation questions: show pay percentiles (P25, median, P75), pay dispersion, country/department benchmarks, and a direct CSV cohort export. Maintain high accessibility, responsive CSS, and clear visual state management."
 * **Human Validation & Refinement:**
   - Preserved the elegant design language while modularizing components for long-term maintainability.
+

@@ -89,3 +89,4 @@ export function initializeDatabase(customPath) {
     throw err;
   }
 }
+

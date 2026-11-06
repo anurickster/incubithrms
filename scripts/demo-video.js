@@ -18,7 +18,9 @@ async function availablePort() {
     server.listen(0, "127.0.0.1", resolve);
   });
   const { port } = server.address();
-  await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  await new Promise((resolve, reject) =>
+    server.close((error) => (error ? reject(error) : resolve()))
+  );
   return port;
 }
 
@@ -29,8 +31,12 @@ function startProcess(command, args, options) {
     ...options,
   });
   let output = "";
-  child.stdout.on("data", (chunk) => { output += chunk.toString(); });
-  child.stderr.on("data", (chunk) => { output += chunk.toString(); });
+  child.stdout.on("data", (chunk) => {
+    output += chunk.toString();
+  });
+  child.stderr.on("data", (chunk) => {
+    output += chunk.toString();
+  });
   processes.push(child);
   return {
     child,
@@ -63,13 +69,17 @@ try {
   const apiPort = await availablePort();
   const webPort = await availablePort();
 
-  const api = startProcess(process.execPath, [path.join(root, "backend", "server.js")], {
-    env: {
-      ...process.env,
-      PORT: String(apiPort),
-      SALARY_DB_PATH: path.join(temporaryDirectory, "demo.sqlite3"),
-    },
-  });
+  const api = startProcess(
+    process.execPath,
+    [path.join(root, "backend", "server.js")],
+    {
+      env: {
+        ...process.env,
+        PORT: String(apiPort),
+        SALARY_DB_PATH: path.join(temporaryDirectory, "demo.sqlite3"),
+      },
+    }
+  );
   await waitFor(`http://127.0.0.1:${apiPort}/api/health`, api);
 
   const vite = startProcess(
@@ -87,7 +97,7 @@ try {
         ...process.env,
         SALARY_API_URL: `http://127.0.0.1:${apiPort}`,
       },
-    },
+    }
   );
   const appUrl = `http://127.0.0.1:${webPort}`;
   await waitFor(appUrl, vite);
@@ -101,14 +111,26 @@ try {
   page.setDefaultTimeout(10_000);
   await page.goto(appUrl, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Compensation overview" }).waitFor();
-  await page.waitForTimeout(1200);
-  await page.getByRole("button", { name: "View employees" }).click();
+  await page.waitForTimeout(1000);
+
+  // 1. Visit Pay Intelligence ("How We Pay") view
+  await page.getByRole("button", { name: "Pay Intelligence" }).first().click();
+  await page.getByText("How ACME Pays People").waitFor();
+  await page.waitForTimeout(1000);
+  await page.getByRole("tab", { name: "Percentile Spread & Equity" }).click();
+  await page.waitForTimeout(1000);
+
+  // 2. Navigate to Employee Directory
+  await page.getByRole("button", { name: "Employees" }).click();
   await page.getByRole("textbox", { name: "Search employees" }).fill("ACME-00001");
-  const employeeRow = page.locator("tbody tr.employee-row").filter({ hasText: "ACME-00001" });
+  const employeeRow = page
+    .locator("tbody tr.employee-row")
+    .filter({ hasText: "ACME-00001" });
   await employeeRow.waitFor({ state: "visible" });
   await page.waitForTimeout(700);
   await employeeRow.click();
 
+  // 3. Inspect Profile and Update Salary
   const dialog = page.getByRole("dialog");
   await dialog.getByText("Salary history").waitFor();
   await page.waitForTimeout(800);
@@ -118,7 +140,9 @@ try {
   const effectiveDate = dialog.locator('input[name="effective_date"]');
   const today = new Date();
   await effectiveDate.fill(
-    `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`,
+    `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
+      today.getDate()
+    ).padStart(2, "0")}`
   );
   await page.waitForTimeout(700);
   await dialog.getByRole("button", { name: "Save changes" }).click();

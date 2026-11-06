@@ -67,3 +67,4 @@ Computing median, 25th percentile (P25), 75th percentile (P75), and averages acr
   - `GET /api/employees?page=1&page_size=10`: ~1.8 KB (gzipped ~650 bytes).
 - **Client Debounce:** Live search input is debounced by 250ms to prevent request saturation while typing.
 - **Race Condition Prevention:** Client tracks monotonic request IDs (`employeeRequestGeneration`) to guarantee out-of-order asynchronous responses are safely discarded.
+

@@ -322,3 +322,4 @@ function countryMark(country) {
   };
   return marks[country] ?? "•";
 }
+

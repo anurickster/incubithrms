@@ -137,3 +137,4 @@ sequenceDiagram
 | `GET` | `/api/employees/export` | `q`, `country`, `department`, `currency` | Streamed RFC-4180 compliant CSV export for HR reporting |
 | `GET` | `/api/employees/:id` | None | Fetch employee record with full chronological salary history |
 | `PATCH` | `/api/employees/:id` | None | Atomic effective-dated salary update with audit trail |
+

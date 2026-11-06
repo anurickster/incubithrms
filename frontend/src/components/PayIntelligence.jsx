@@ -270,3 +270,4 @@ export function PayIntelligence({ stats, onNavigateToDirectory }) {
     </div>
   );
 }
+

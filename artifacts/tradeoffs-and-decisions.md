@@ -59,3 +59,4 @@
 * **Rationale:**
   - Every change creates a verifiable audit trail capturing previous salary, new salary, actor, and effective date.
   - Enforces that an effective date cannot be backdated before the current salary's effective date, preventing retroactive distortion of historical payroll records.
+
