@@ -1,0 +1,75 @@
+{
+  "measured_at": "2026-11-06T07:24:33.075Z",
+  "environment": {
+    "node": "v22.22.3",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M4"
+  },
+  "scope": "Local service calls on a temporary SQLite database; excludes HTTP, browser, and hosting latency",
+  "seed": {
+    "employees_inserted": 10000,
+    "history_rows": 10000,
+    "duration_ms": 63.41,
+    "second_run_inserted": 0,
+    "second_run_ms": 18.643
+  },
+  "measurements": {
+    "directory": {
+      "samples": 20,
+      "median_ms": 0.037,
+      "p95_ms": 0.053,
+      "response_bytes": 2929,
+      "estimated_gzip_bytes": 840
+    },
+    "substring_search": {
+      "samples": 20,
+      "median_ms": 1.313,
+      "p95_ms": 1.477,
+      "response_bytes": 2920,
+      "estimated_gzip_bytes": 686
+    },
+    "cohort": {
+      "samples": 20,
+      "median_ms": 0.049,
+      "p95_ms": 0.083,
+      "response_bytes": 2955,
+      "estimated_gzip_bytes": 617
+    },
+    "organization_stats": {
+      "samples": 20,
+      "median_ms": 11.866,
+      "p95_ms": 13.069,
+      "response_bytes": 73845,
+      "estimated_gzip_bytes": 12771
+    },
+    "cohort_stats": {
+      "samples": 20,
+      "median_ms": 0.101,
+      "p95_ms": 0.11,
+      "response_bytes": 1432,
+      "estimated_gzip_bytes": 397
+    },
+    "csv_export": {
+      "samples": 20,
+      "median_ms": 16.161,
+      "p95_ms": 17.917,
+      "response_bytes": 1226771,
+      "estimated_gzip_bytes": 246027
+    }
+  },
+  "cohort_query_plan": [
+    {
+      "id": 5,
+      "parent": 0,
+      "notused": 61,
+      "detail": "SEARCH employees USING INDEX idx_employees_country_department (country=? AND department=?)"
+    },
+    {
+      "id": 24,
+      "parent": 0,
+      "notused": 0,
+      "detail": "USE TEMP B-TREE FOR ORDER BY"
+    }
+  ]
+}

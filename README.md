@@ -1,115 +1,84 @@
-# Compwise — ACME Salary Management & Compensation Intelligence
+# Compwise — ACME salary management
 
-A local-first, high-performance salary management platform and compensation intelligence workspace built for ACME Corporation's HR Manager. Built with React 19, a dependency-free Node.js 22 LTS API with native SQLite (`node:sqlite`), and a repeatable 10,000-employee synthetic dataset.
+A React + Node.js application for an HR Manager to maintain annual base salaries and explore compensation across **10,000 fictional employees**, 10 countries, and 9 currencies. SQLite stores employee records, salary history, audit events, and retry responses.
 
-> **Demo only:** All employee records are fictional and deterministic. There is no external production sign-in or network access. Do not enter real employee data or expose the server to an untrusted network.
+**Deployment status:** Render configuration is prepared; a live deployment has not yet been created. The selected setup uses a paid service and persistent disk. See [Render setup](docs/DEPLOYMENT.md).
 
----
+**[Watch the demo video](artifacts/demo/compwise-walkthrough.webm)** · [One-page requirements](docs/REQUIREMENTS.md) · [Architecture](artifacts/architecture.md) · [Decisions](artifacts/tradeoffs-and-decisions.md) · [AI workflow](artifacts/ai-workflow-prompts.md)
 
-## Quick Start
+All records are synthetic. There is no authentication or authorization, and “HR Manager” is a demonstration actor label. Use this app only with fictional data.
 
-**Prerequisites:** Node.js 20.19+ (or Node.js 22 LTS recommended). Zero Python or external database dependencies required.
+## Run locally
 
-```sh
-# 1. Install dependencies
-npm install
-
-# 2. Seed database (Optional: API auto-seeds on first launch if empty)
-npm run seed
-
-# 3. Start backend API (Terminal 1: http://127.0.0.1:8000)
-npm run api
-
-# 4. Start frontend Vite dev server (Terminal 2: http://127.0.0.1:5173)
-npm run dev
-```
-
-To run a single-process production build preview, build the React app and start the API (the Node.js API serves `frontend/dist` directly):
+Use **Node 22.22.3**, pinned in `.node-version` and `.nvmrc`. Node 20 cannot run the native `node:sqlite` backend. The supported Node range is 22.13–22.x; the pinned version is the one validated for this submission.
 
 ```sh
+nvm use                 # optional, if nvm is installed
+npm ci
 npm run build
-npm run api
+npm start
 ```
 
-To run against an isolated or disposable database, pass `SALARY_DB_PATH`:
-```sh
-SALARY_DB_PATH=/tmp/disposable-salaries.sqlite3 npm run api
-```
+Open **http://127.0.0.1:8000**. The Node server serves both the built React UI and `/api`, and seeds the database on startup. Reseeding inserts only missing employees and preserves salary edits.
 
----
+For frontend development, run `npm run api` and `npm run dev` in separate terminals, then open http://127.0.0.1:5173. Vite proxies `/api` to the backend. `SALARY_API_URL` can override the proxy destination.
 
-## Answering "How ACME Pays People"
+| Setting | Default | Purpose |
+|---|---|---|
+| `PORT` | `8000` | HTTP port; Render supplies its own value |
+| `HOST` | `127.0.0.1` | Set `0.0.0.0` on Render |
+| `SALARY_DB_PATH` | `data/salaries.sqlite3` | SQLite path; Render uses `/var/data/salaries.sqlite3` on a persistent disk |
 
-Designed specifically around the assessment problem statement: *"Currently, ACME org's HR team manages salary data for 10,000 employees across multiple countries via excels... We want the HR manager to manage salaries data via web-based software and be able to answer questions about how the org pays people."*
+`npm run seed` also runs the idempotent seed directly. To use an isolated database, set `SALARY_DB_PATH` before starting the API.
 
-Compwise provides a dedicated **Pay Intelligence** engine to answer core strategic questions:
-1. **Role & Title Pay Bands:** What are the minimum, median (midpoint), and maximum salary bands for Software Engineers, Product Managers, and other standardized roles across departments?
-2. **Percentile Distributions & Equity:** Where do salaries fall across the 25th percentile (P25), median (P50), and 75th percentile (P75)? What is the pay dispersion ratio ($\text{Max} / \text{Min}$) for each currency?
-3. **Cross-Cohort Analysis:** Select any operating Country and Department (e.g. *Engineering in India* or *Sales in the US*) to inspect localized medians, averages, and headcounts, and jump into the filtered directory with one click.
-4. **Excel-Ready CSV Export:** One-click streaming CSV export matching active search queries and filters for offline executive briefings and compliance audits.
+## Product walkthrough
 
----
+1. **Overview:** inspect headcount and average salaries, reported separately by currency.
+2. **Employees:** search, combine filters, paginate, open profiles, and export matching records to CSV.
+3. **Salary edit:** enter a new annual base salary, currency, and effective date; save and inspect the preserved previous value in history.
+4. **Pay Intelligence:** inspect observed role salary ranges and P25/median/P75 distributions. These are observed data, not approved compensation bands or an equity assessment.
+5. **Cohort explorer:** select Germany + Engineering, see its exact headcount and median, and open the same 58 employees in the directory. Country benchmark includes all departments; cohort figures include only the selected country and department. Each currency remains separate if employees change currency.
+6. Refresh a profile or cohort URL; the selected view remains available.
 
-## Core Features & Workflow
+Effective dates use **UTC** in both UI and API. They must be later than the employee's current salary date and no later than today. Same-day corrections and future scheduling are deliberately excluded. Salaries use integer **hundredths** in SQLite; JPY is also represented using this fixed scale, rather than currency-specific minor-unit exponents.
 
-- **High-Performance 10,000-Employee Directory:** Instant sub-10ms substring search across employee IDs, names, and emails; multi-faceted filtering by country, department, and currency; server-side sorting and bounded pagination.
-- **Effective-Dated Salary Management:** Every compensation adjustment records a strict effective date ($YYYY-MM-DD$). Past and present dates are supported; future-dated changes are blocked from distorting current payroll baselines.
-- **Immutable History & Audit Logging:** Previous salaries, new salaries, actors, and human-readable mutation notes are preserved in append-only `salary_history` and `audit_events` tables.
-- **Currency-Safe Principles:** Total isolation of currencies. Salaries in different currencies (USD, GBP, EUR, INR, JPY, CAD, AUD, SGD, MXN) are never summed or converted using arbitrary FX rates without central bank exchange policy.
-- **Integer Minor Units:** All monetary values are stored in the database as integer cents (`base_salary_cents`) to completely prevent IEEE 754 floating-point rounding errors.
-
----
-
-## Architecture & Technology Stack
-
-- **Backend:** Node.js (v22 LTS) using native `node:sqlite` (`DatabaseSync`), native `node:http`, and native `node:test`. Zero external npm runtime production dependencies for maximum auditability, security, and portability.
-- **Database:** SQLite 3 with composite B-Tree indexes on `(last_name, first_name)`, `(country, department)`, `(currency)`, and `(employee_id, effective_date)`.
-- **Frontend:** React 19 + Vite with responsive design, accessible forms, keyboard navigation, and live notification toasts.
-- **Seeding:** High-performance prepared statement transaction inserting 10,000 employees and 10,000 baseline history rows in **< 60 milliseconds**.
-
-Detailed design documents, ADRs, and diagrams are committed in the repository:
-- [Product Requirements Document (PRD)](./docs/REQUIREMENTS.md)
-- [System Architecture & Sequence Diagrams](./artifacts/architecture.md)
-- [Architecture Decision Records & Trade-offs](./artifacts/tradeoffs-and-decisions.md)
-- [Performance & Indexing Benchmark Report](./artifacts/performance-analysis.md)
-- [AI Workflow & Prompt Engineering Notes](./artifacts/ai-workflow-prompts.md)
-
----
-
-## API Specification
-
-| Method | Path | Query / Body Parameters | Purpose |
-|---|---|---|---|
-| `GET` | `/api/health` | None | Service readiness probe |
-| `GET` | `/api/stats` | `country`, `department` (optional) | Headcount, salary percentiles (P25, median, P75), pay bands, and currency benchmarks |
-| `GET` | `/api/employees` | `q`, `country`, `department`, `currency`, `sort`, `direction`, `page`, `page_size` | Paginated search, faceted filtering, and sorting across 10,000 employees |
-| `GET` | `/api/employees/export` | `q`, `country`, `department`, `currency` | Streamed RFC-4180 CSV export for HR reporting |
-| `GET` | `/api/employees/{id}` | None | Employee profile and chronological salary history |
-| `PATCH` | `/api/employees/{id}` | `base_salary`, `currency`, `effective_date` | Atomic effective-dated salary update with audit event |
-
----
-
-## Automated Test Suite
-
-Compwise includes a fast, deterministic test suite covering domain validation, database constraints, seeding reproducibility, statistical calculations, and HTTP server lifecycle.
-
-Run all tests via npm:
+## Verify
 
 ```sh
-npm test
-```
-
-All 22 unit and integration tests execute in **< 250 milliseconds** with zero external dependencies.
-
----
-
-## Automated Demo Video Recording
-
-A Playwright script is included to automatically record a comprehensive browser walkthrough of the compensation dashboard, Pay Intelligence view, employee directory search, and atomic salary update:
-
-```sh
+npm test                       # 41 unit/API/helper tests; temporary isolated databases
+npm run test:coverage          # native Node coverage; does not include React rendering
+npm run build
 npx playwright install chromium
-npm run demo:video
+npm run test:e2e                # browser workflows through the Vite proxy
+npm run test:e2e:production     # the same workflows through the built Node server
+npm run benchmark              # reproducible local service benchmarks
 ```
 
-The script boots an ephemeral Node.js API and Vite server, seeds a temporary database, interacts with the application, saves the recording to `artifacts/demo/compwise-walkthrough.webm`, and cleans up all temporary resources.
+Tests cover exact statistical values, country + department scope, seeding, validation, history/audit changes, atomic retry storage, conflicting idempotency requests, and existing database migration. Browser checks cover salary updates, profile/cohort refresh, keyboard focus trapping/restoration, navigation, and directory drill-down. Automated browser tests use isolated data and a disposable browser; interactive checks use the requested Chrome profile.
+
+[GitHub Actions](.github/workflows/ci.yml) runs the unit/API tests, build, and both browser modes. A successful local run is separate from the remote CI result.
+
+## API
+
+| Method | Endpoint | Behavior |
+|---|---|---|
+| GET | `/api/health` | Database readiness and employee count |
+| GET | `/api/stats?country=Germany&department=Engineering` | All counts, percentiles, ranges, and groups scoped to both optional filters |
+| GET | `/api/employees` | `q`, `country`, `department`, `currency`, `sort`, `direction`, `page`, `page_size` |
+| GET | `/api/employees/export` | CSV matching `q`, `country`, `department`, `currency`; generated in memory |
+| GET | `/api/employees/:id` | Employee and salary history |
+| PATCH | `/api/employees/:id` | `base_salary`, `currency`, `effective_date`; optional `Idempotency-Key` header |
+
+Valid sort fields are `employee_id`, `name`, `country`, `department`, `base_salary`, and `currency`. Salary sorting compares nominal amounts, so filter to one currency for a meaningful ranking. Page size is 1–100. Validation errors return 400, missing employees 404, conflicting retry keys 409, and database readiness failures 503. `/api/v1/*` aliases the unversioned routes.
+
+The browser retains a retry key for an unchanged salary submission after a failed response. The backend binds each key to the employee and normalized amount/currency/date. It writes the salary, history, audit event, and cached response in one transaction. Legacy cached keys without request fingerprints are rejected for safety; use a new key.
+
+## Design and evidence
+
+- [One-page requirements](docs/REQUIREMENTS.md): goal, scope, acceptance, and exclusions. The original requirements were committed before implementation; later refinements remain visible in Git history.
+- [Architecture](artifacts/architecture.md) and [trade-offs](artifacts/tradeoffs-and-decisions.md): implementation boundaries and limitations.
+- [Performance methodology and results](artifacts/performance-analysis.md): measured locally, not hosting or load-test guarantees.
+- [AI workflow notes](artifacts/ai-workflow-prompts.md): how AI-assisted work was checked and corrected.
+- [Submission checklist](docs/SUBMISSION.md) and [Render setup](docs/DEPLOYMENT.md).
+
+`npm run demo:video` regenerates `artifacts/demo/compwise-walkthrough.webm` using a disposable database. The recording is an automated walkthrough without voice narration.

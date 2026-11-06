@@ -1,43 +1,29 @@
-# AI Workflow & Prompt Engineering Notes
+# AI-assisted workflow and verification
 
-## 1. Intentional AI Engineering Approach
-In accordance with the assessment expectations, AI was used intentionally across all phases of the project lifecycle to accelerate development while enforcing rigorous software engineering standards, test verification, and architectural clarity.
+The assessment requires intentional AI use. This document records the approach and current review evidence; it does not claim that every historical prompt below is an exact transcript.
 
----
+## Development history
+The Git history records requirements before implementation, an initial working UI/API, effective-date and refresh corrections, demo recording, migration from Python to native Node/SQLite, modular UI/analytics, URL state, and backend hardening. The design was refined in later commits rather than rewriting that history.
 
-## 2. Structured Prompts & Execution Phases
+Earlier development used AI to help frame scope, create backend/schema/test code, split React components, and add salary analytics. These are reconstructed task summaries, not verbatim prompts:
+- Define HR salary-management workflows, currency boundaries, exclusions, and acceptance criteria.
+- Implement and test a relational employee directory, effective-dated salary changes, and grouped statistics.
+- Add overview, directory, salary editor, analytics, loading/error states, and a demo script.
 
-### Phase 1: Requirements Discovery & Domain Modeling
-* **Goal:** Extract implicit HR compensation domain requirements and define clean boundaries.
-* **Prompt Used:**
-  > "Act as a Senior Compensation Director and Principal Software Architect. Analyze the problem of managing salary data for 10,000 employees across 10 international jurisdictions. Identify the key questions an HR manager needs to answer, potential currency traps (e.g. invalid FX blending), and edge cases in effective-dated salary records. Formulate a 1-page PRD highlighting scope, non-goals, and rationale."
-* **Human Validation & Refinement:**
-  - Enforced strict segregation of currencies (rejecting arbitrary FX conversion).
-  - Defined explicit rules for effective dating (no backdating behind current effective date, no future dates).
+## Submission review and correction, 6 November 2026
+The user supplied the complete assessment and requested a repository review, then authorized the fixes: “ok do all the things and use Anurag Chrome profile for browser things”. They selected “Use Render; prepare setup first” and clarified that this is a personal repository, without Azure work-item metadata.
 
-### Phase 2: Architecture & Migration to Node.js
-* **Goal:** Design an idiomatic Node.js 22 backend replacing the legacy Python prototype with zero external production dependencies.
-* **Prompt Used:**
-  > "Design an enterprise-grade Node.js service using native Node 22 `node:sqlite` (`DatabaseSync`), native `node:http`, and `node:test`. The service must handle 10,000 seeded employees, fast indexed search, bounded pagination, atomic multi-table transactions for salary updates, and statistical aggregations (mean, median, P25, P75). Ensure zero external npm production dependencies."
-* **Human Validation & Refinement:**
-  - Audited `node:sqlite` transaction handling to guarantee rollback on constraint violations.
-  - Verified monetary calculations use integer cents to prevent floating point inaccuracies.
+The review agent read the source, requirements, artifacts, and commit history; ran tests/build/browser scripts; and reproduced suspected bugs with a disposable database. Passing tests did not establish correctness: the review found ignored statistics filters, a reused key returning another employee's response, and employee deep links being removed before profile loading.
 
-### Phase 3: Test-Driven Verification & Edge Cases
-* **Goal:** Build an exhaustive, fast, and deterministic test suite.
-* **Prompt Used:**
-  > "Generate a comprehensive unit and integration test suite using `node:test` and `node:assert/strict`. Cover:
-  > 1. Seed determinism and idempotency across 10,000 rows.
-  > 2. Edge-case validation: negative salaries, NaN, non-string dates, leap days, future dates, duplicate same-day edits.
-  > 3. HTTP status codes (200, 400, 404) and JSON error response structures.
-  > 4. Server-side pagination bounds checking."
-* **Human Validation & Refinement:**
-  - Added specific test assertions verifying previous salary cents are preserved as null on first seed and correct on subsequent updates.
+Corrections and checks:
+- Country + department statistics now match the directory. An exact fixture checks mean/P25/median/P75, and a browser regression checks Germany + Engineering has 58 employees with median EUR 103,062.36.
+- Retry keys now bind employee and normalized payload and commit with the mutation. Tests deliberately fail cache insertion to verify salary/history/audit rollback.
+- Profile URL state is preserved through initial load and refresh. URL/date tests import the production helpers instead of copying their implementations.
+- Browser tests exercise real Tab/Shift+Tab wrapping and focus restoration. Testing the built production server exposed a timing issue; modal loading/focus initialization was corrected before rerunning.
+- Performance claims were replaced with an executable benchmark, raw measured results, and explicit limits.
+- Render infrastructure is prepared for review; deployment completion is tracked separately from local validation.
 
-### Phase 4: Frontend Component Decomposition & Analytics UX
-* **Goal:** Modularize the monolithic React UI and introduce the "How ACME Pays" interactive intelligence view.
-* **Prompt Used:**
-  > "Refactor the UI to provide the HR manager with actionable answers to compensation questions: show pay percentiles (P25, median, P75), pay dispersion, country/department benchmarks, and a direct CSV cohort export. Maintain high accessibility, responsive CSS, and clear visual state management."
-* **Human Validation & Refinement:**
-  - Preserved the elegant design language while modularizing components for long-term maintainability.
+Interactive browser checks use Anurag's Chrome profile. Automated tests and video recording use a disposable browser and temporary synthetic database. No genuine employee data is sent to an AI service by the application, and the product has no LLM integration.
 
+## Remaining human decisions
+Review the paid Render estimate before resource creation, verify the live service and restart persistence, and send the final repository/live-app/video links in the original email thread. These steps are not implied by a local test pass.

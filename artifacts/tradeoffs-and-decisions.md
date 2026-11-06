@@ -1,76 +1,24 @@
-# Architecture Decision Records (ADRs) & Trade-Offs
+# Engineering decisions and trade-offs
 
-## ADR-001: Backend Platform Migration to Node.js 22 LTS
-* **Context:** The initial repository prototype used Python's `http.server` and standard library. The evaluation prompt specifically requested a Node.js backend.
-* **Decision:** Re-architect the backend entirely in Node.js 22 LTS using native ESM (`import/export`).
-* **Rationale:**
-  - Modern Node.js provides a unified JavaScript/TypeScript toolchain across backend and frontend.
-  - Asynchronous event-loop architecture delivers excellent I/O concurrency for concurrent HTTP client requests without thread pool overhead.
-  - Full compatibility with existing npm packaging, Vite tooling, and Playwright automation.
-* **Trade-offs:** Avoided complex Node frameworks (NestJS/TypeORM) in favor of lightweight native Node modules to keep code auditable, fast, and free of dependency rot.
+## Node and SQLite
+The repository evolved from a Python prototype to a JavaScript backend. The assessment allows a backend appropriate to the applicant's role; it does not explicitly require Node. Native `node:http`, `node:sqlite`, and `node:test` keep the backend small. React and Vite provide the UI/toolchain, with Playwright for browser testing. Node 22.22.3 is pinned because `node:sqlite` is unavailable in Node 20.
 
----
+SQLite fits a 10,000-row demonstration with one service instance. A Map reuses one synchronous handle per database path; it is a connection cache, not a concurrent connection pool. WAL helps other connections read during writes but does not make `DatabaseSync` asynchronous. A persistent disk supports service restarts. Multiple instances, sustained concurrent writes, and longer analytics would justify a client-server database or worker design. Fewer dependencies do not guarantee security or zero vulnerabilities.
 
-## ADR-002: Native SQLite Storage (`node:sqlite`) vs External ORMs
-* **Context:** A relational database was required to manage 10,000 employees with ACID compliance and local-first execution.
-* **Decision:** Utilize Node.js 22's native `DatabaseSync` from `node:sqlite`.
-* **Rationale:**
-  - **Zero External Dependencies:** Eliminates reliance on `better-sqlite3` or `sqlite3` npm packages that require `node-gyp`, Python compile tools, and OS-specific C++ build chains.
-  - **Single File Storage:** Easy to back up, copy, disposable for tests, and zero network configuration.
-  - **In-Memory & Transaction Support:** Instant test runs using temporary test databases; prepared statements provide sub-millisecond execution.
-* **Trade-offs:** Built-in `node:sqlite` is synchronous (`DatabaseSync`), which for a local-first SQLite embedded database on fast SSDs is actually an advantage (eliminating promise scheduling overhead), but would need connection pooling if migrated to client-server SQL engines like PostgreSQL in a distributed cloud deployment.
+## Salary representation and currency
+Store integer hundredths instead of binary floating-point salary values. Inputs are bounded and converted at the boundary; aggregates round to hundredths. The fixed scale is also used for JPY and is not a claim to implement each currency's ISO minor-unit exponent. Statistics and cohort comparisons retain separate currencies; a global converted total needs an agreed FX source/date policy. Nominal salary sorting across currencies is available, so the README instructs users to filter by currency for comparable rankings.
 
----
+Observed min/median/max salaries describe the dataset; they are not approved pay bands. Max/Min describes dispersion, not pay equity. Real equity analysis needs comparable role, level, experience, and other contextual factors absent from this dataset.
 
-## ADR-003: Monetary Precision via Integer Minor Units (`cents`)
-* **Context:** Floating-point numbers in IEEE 754 format (`0.1 + 0.2 === 0.30000000000000004`) introduce unacceptable accumulation errors in compensation calculations.
-* **Decision:** All salaries are stored in the database as integer minor units (`base_salary_cents`), e.g., \$120,000.50 is stored as `12000050`.
-* **Rationale:**
-  - Guarantees exact integer arithmetic for calculations.
-  - Integer comparisons and aggregations (`SUM`, `AVG`, `MIN`, `MAX`) in SQL are faster and immune to precision loss.
-  - Decimal conversion occurs only at the API and UI boundaries.
-* **Trade-offs:** Requires conversion when reading/writing; mitigated by centralized serializer/deserializer functions in `service.js`.
+## Effective dates, history, and retries
+Changes must be later than the current salary date and no later than today in UTC. One record per employee/date is deliberately simple; same-day corrections and scheduled changes need a revision policy. This restriction is explicit in the requirements and UI.
 
----
+Salary, history, audit, and optional retry response are stored in the same `BEGIN IMMEDIATE` transaction. Replay checks and current salary reads occur after taking the write lock. Keys are bound to employee and normalized payload; conflicting reuse returns 409. Legacy unbound keys are rejected. Keys currently have no expiry/retention cleanup. The browser reuses a key for an unchanged failed submission; durable retry recovery after a full browser restart is not implemented.
 
-## ADR-004: Currency Segregation vs Dynamic FX Conversion
-* **Context:** ACME operates across 10 countries with 9 distinct currencies (USD, GBP, EUR, CAD, AUD, INR, JPY, SGD, MXN).
-* **Decision:** All statistics, averages, medians, and summaries are strictly grouped by currency. Compwise strictly forbids summing or comparing salaries across different currencies without explicit user-provided FX conversion.
-* **Rationale:**
-  - Without an official organizational FX reference rate and effective conversion date policy, summing 5,000,000 INR and 100,000 USD results in meaningless, deceptive totals.
-  - HR managers comparing salaries across borders must look at local purchasing power and currency-specific market percentiles, not raw FX sums.
-* **Trade-offs:** Dashboard cannot show a single "Total Global Payroll" number; instead, it presents an honest, accurate multi-currency benchmark table.
+## Search, CSV, and analytics
+Server pagination bounds DOM and payload size. Indexed country/department equality filters are inexpensive at this scale. Substring `LIKE '%text%'` search scans rows; the name index does not turn it into an indexed full-text search. A larger dataset would need a measured search strategy. CSV export is buffered in memory, not streamed. At 10,000 rows the measured export is about 1.2 MB; a larger dataset would justify streaming. There is no employee import endpoint, so arbitrary imported spreadsheet content is outside this release.
 
----
+## Demo access and hosting
+The app has no authentication, role enforcement, approvals, or real user identity. “Local HR Manager” is an actor label. All seed records are fictional and the UI is marked demo data. Real deployment with employee information needs organization-specific access control, privacy policies, backups, and approval workflows. Public assessment hosting must continue to use synthetic data only.
 
-## ADR-005: Server-Side Indexed Pagination & Filtering
-* **Context:** Rendering 10,000 DOM nodes in a browser causes severe UI lag, memory bloat, and battery drain.
-* **Decision:** Implement server-side pagination with a default page size of 10 (configurable up to 100) and composite B-tree indexes.
-* **Rationale:**
-  - Browser memory consumption remains minimal and constant regardless of whether the org has 10,000 or 1,000,000 employees.
-  - Network payload per request is under 5 KB.
-* **Trade-offs:** Requires an extra query to calculate total count for pagination metadata; mitigated by covering index on `(last_name, first_name)`.
-
----
-
-## ADR-006: Immutability of History & Strict Effective Dating
-* **Context:** Spreadsheet edits silently overwrite previous values, losing historical context for raises and title changes.
-* **Decision:** The `salary_history` and `audit_events` tables are strictly append-only.
-* **Rationale:**
-  - Every change creates a verifiable audit trail capturing previous salary, new salary, actor, and effective date.
-  - Enforces that an effective date cannot be backdated before the current salary's effective date, preventing retroactive distortion of historical payroll records.
-
----
-
-## ADR-007: Enterprise Backend Hardening — WAL Mode, Idempotency, and Defense-in-Depth
-* **Context:** Enterprise compensation APIs require strict consistency, protection against duplicate mutations caused by network timeouts/retries, transparent observability, and robust process lifecycle handling.
-* **Decision:** Implement database connection reuse, SQLite Write-Ahead Logging (WAL), mutation idempotency keys, correlation ID request tracing (`X-Request-Id`), deep health checks, and graceful shutdown handlers.
-* **Rationale:**
-  - **WAL Mode & Connection Pooling:** `PRAGMA journal_mode = WAL;` and handle caching in `connectionPool` keep SQLite's memory page cache hot and allow concurrent non-blocking reads during salary update transactions.
-  - **Idempotency Keys:** Mutating salary endpoints accept `Idempotency-Key` headers; retried requests return the original atomic response without throwing duplicate date constraint errors.
-  - **Traceability:** Injects `X-Request-Id` across all requests and responses, paired with structured request timing logs (`method`, `path`, `status`, `duration_ms`).
-  - **Deep Health Probing:** `/api/health` probes both HTTP server availability and relational database query readiness, returning structured uptime and employee counts.
-  - **Graceful Lifecycle:** `SIGTERM` and `SIGINT` signals safely drain pending requests and flush open database handles.
-* **Trade-offs:** Maintains zero third-party runtime production dependencies by utilizing native standard library features (`node:sqlite`, `node:crypto`, `node:perf_hooks`, `node:http`).
-
-
+Render's free filesystem does not preserve edits through restart/redeploy. The prepared configuration therefore selects a paid service with a 1 GB disk and disables automatic deploys until a reviewed commit is manually deployed. The user requested setup preparation before provisioning.

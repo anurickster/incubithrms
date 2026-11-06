@@ -1,140 +1,50 @@
-# Compwise System Architecture
-
-## 1. High-Level System Architecture
-
-Compwise is built as a modular, local-first enterprise compensation platform designed to process 10,000 employee records with sub-millisecond query responses and zero external service dependencies.
+# Compwise architecture
 
 ```mermaid
 flowchart TD
-    subgraph Client ["Client Tier (React 19 + Vite)"]
-        UI["Compwise Single Page App"]
-        Overview["Overview Dashboard"]
-        Directory["Employee Directory & Search"]
-        PayAnalytics["'How We Pay' Intelligence"]
-        ProfileModal["Profile & Salary Editor Modal"]
-    end
-
-    subgraph Server ["Backend Tier (Node.js 22 LTS)"]
-        Router["HTTP Request Router (node:http)"]
-        StaticServe["SPA Static Asset Server"]
-        ValidationMiddleware["Payload & Parameter Validator"]
-        SalaryService["Salary Domain Service"]
-        StatsEngine["Statistical Computation Engine"]
-        CSVExport["RFC-4180 Streaming CSV Generator"]
-    end
-
-    subgraph Data ["Persistence Tier (SQLite 3 via node:sqlite)"]
-        DB[(salaries.sqlite3)]
-        TableEmployees["employees (10,000 rows)"]
-        TableHistory["salary_history (Audit Trail)"]
-        TableAudit["audit_events (Compliance Log)"]
-        Indexes["B-Tree Indexes (Composite & Covering)"]
-    end
-
-    UI --> Router
-    Router --> StaticServe
-    Router --> ValidationMiddleware
-    ValidationMiddleware --> SalaryService
-    SalaryService --> StatsEngine
-    SalaryService --> CSVExport
-    SalaryService --> DB
-    DB --- TableEmployees
-    DB --- TableHistory
-    DB --- TableAudit
-    DB --- Indexes
+  HR[HR Manager / synthetic-data demo] --> UI[React application]
+  UI --> API[Node HTTP router]
+  API --> Service[Salary validation and analytics]
+  API --> Static[Built React assets]
+  Service --> DB[(SQLite)]
+  DB --> Employees[employees]
+  DB --> History[salary_history]
+  DB --> Audit[audit_events]
+  DB --> Keys[idempotency_keys]
 ```
 
----
+React components separate the overview, directory, analytics, and salary dialog. Shared URL/date helpers are imported by both the app and helper tests. Cohort selection fetches scoped statistics with cancellation; outdated responses cannot replace the selected cohort. Employee profile IDs are retained while loading, so URL synchronization does not discard deep links.
 
-## 2. Database Schema & Entity Relationship
+`server.js` handles HTTP routing, JSON bodies, static assets, response headers, readiness, and shutdown. `service.js` validates domain inputs, reads employees, computes salary distributions, exports CSV, and coordinates salary mutations. `database.js` owns schema initialization, migration, and cached synchronous handles. `seed.js` generates deterministic fictional employees.
 
-```mermaid
-erDiagram
-    EMPLOYEES ||--o{ SALARY_HISTORY : "tracks historical changes"
-    EMPLOYEES ||--o{ AUDIT_EVENTS : "records change reasons"
-
-    EMPLOYEES {
-        string employee_id PK "ACME-XXXXX format"
-        string first_name "Given name"
-        string last_name "Surname"
-        string email UK "Corporate email"
-        string country "Operating country (10 countries)"
-        string department "Department (10 departments)"
-        string job_title "Standardized role title"
-        string hire_date "ISO date (YYYY-MM-DD)"
-        integer base_salary_cents "Stored in minor units (cents)"
-        string currency "3-letter ISO code"
-        string salary_effective_date "Date when current salary took effect"
-    }
-
-    SALARY_HISTORY {
-        integer id PK "Autoincrement"
-        string employee_id FK "References employees.employee_id"
-        integer previous_salary_cents "Null for initial seed"
-        integer new_salary_cents "Validated positive cents"
-        string previous_currency "Previous 3-letter currency"
-        string new_currency "New 3-letter currency"
-        string effective_date "Effective date of change"
-        string actor "Who initiated change"
-        string changed_at "Timestamp of record creation"
-    }
-
-    AUDIT_EVENTS {
-        integer id PK "Autoincrement"
-        string employee_id FK "References employees.employee_id"
-        string event_type "e.g. salary.updated"
-        string actor "e.g. Local HR Manager"
-        string details "Human-readable summary of transition"
-        string created_at "Audit timestamp"
-    }
-```
-
----
-
-## 3. Salary Mutation Workflow & Transaction Boundary
-
-To guarantee zero data loss, the salary update workflow enforces transactional atomicity across three database tables:
+## Salary transaction
 
 ```mermaid
 sequenceDiagram
-    autonumber
-    actor HR as HR Manager (Client UI)
-    participant API as Node.js HTTP Server
-    participant Val as Validation Layer
-    participant Svc as Salary Service
-    participant DB as SQLite Database
-
-    HR->>API: PATCH /api/employees/{id} (new salary, currency, effective_date)
-    API->>Val: Validate request payload & bounds
-    alt Payload invalid (bad amount, future date, invalid currency)
-        Val-->>HR: 400 Bad Request with error explanation
-    end
-    Val->>Svc: updateSalary(employeeId, payload)
-    Svc->>DB: BEGIN IMMEDIATE TRANSACTION
-    Svc->>DB: SELECT current base_salary_cents, currency, effective_date FOR employee
-    alt Employee Not Found
-        Svc-->>HR: 404 Not Found
-    else Date is older or equal to current date
-        Svc-->>HR: 400 Bad Request (Cannot backdate or duplicate)
-    end
-    Svc->>DB: UPDATE employees SET base_salary_cents=?, currency=?, salary_effective_date=?
-    Svc->>DB: INSERT INTO salary_history (...)
-    Svc->>DB: INSERT INTO audit_events (...)
-    Svc->>DB: COMMIT TRANSACTION
-    Svc->>DB: SELECT updated employee with full history
-    Svc-->>HR: 200 OK (Updated employee profile & chronological history)
+  participant UI as HR browser
+  participant API as Node API
+  participant DB as SQLite
+  UI->>API: PATCH employee + payload + retry key
+  API->>API: Validate and normalize amount/currency/date
+  API->>DB: BEGIN IMMEDIATE
+  API->>DB: Read retry key
+  alt Existing key matches employee and request
+    DB-->>API: Original response
+    API->>DB: COMMIT
+  else New key
+    API->>DB: Read current salary and validate date/change
+    API->>DB: Update employee
+    API->>DB: Insert history and audit event
+    API->>DB: Insert key, normalized request, and response
+    API->>DB: COMMIT
+  end
+  API-->>UI: Updated profile / original response
 ```
 
----
+A conflicting key returns 409 without mutation. An error in any write rolls back the transaction. Existing keys without a request fingerprint are retained but cannot replay. History/audit records are append-only through the application API; this is not a tamper-proof database or authenticated audit system.
 
-## 4. API Specification
+## Statistics and deployment
 
-| Method | Endpoint | Query Parameters | Description |
-|---|---|---|---|
-| `GET` | `/api/health` | None | Service readiness probe |
-| `GET` | `/api/stats` | `country`, `department` (optional) | Returns org-wide and cohort compensation statistics (P25, median, mean, P75, min, max, headcount) |
-| `GET` | `/api/employees` | `q`, `country`, `department`, `currency`, `sort`, `direction`, `page`, `page_size` | Paginated search and faceted filter across 10,000 employees |
-| `GET` | `/api/employees/export` | `q`, `country`, `department`, `currency` | Streamed RFC-4180 compliant CSV export for HR reporting |
-| `GET` | `/api/employees/:id` | None | Fetch employee record with full chronological salary history |
-| `PATCH` | `/api/employees/:id` | None | Atomic effective-dated salary update with audit trail |
+Every statistics query applies optional country and department filters to counts and salary rows. Values are sorted within each currency. Linear interpolation computes P25, median, and P75; integer hundredths are rounded at the output boundary. Country benchmarks include all departments; selected-cohort statistics apply both filters. Multiple currencies are always displayed separately.
 
+One Node process serves the UI and API on the same origin. The Render configuration uses a single paid service and attached persistent disk, with runtime seeding and a database readiness endpoint. This is prepared infrastructure, not evidence of an existing live deployment.

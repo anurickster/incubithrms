@@ -111,14 +111,20 @@ try {
   page.setDefaultTimeout(10_000);
   await page.goto(appUrl, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Compensation overview" }).waitFor();
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(3000);
 
   // 1. Visit Pay Intelligence ("How We Pay") view
   await page.getByRole("button", { name: "Pay Intelligence" }).first().click();
   await page.getByText("How ACME Pays People").waitFor();
-  await page.waitForTimeout(1000);
-  await page.getByRole("tab", { name: "Percentile Spread & Equity" }).click();
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(3000);
+  await page.getByRole("tab", { name: "Percentile Spread & Dispersion" }).click();
+  await page.waitForTimeout(3000);
+  await page.getByRole("tab", { name: "Cohort Cross-Explorer" }).click();
+  await page.getByLabel("Operating Country").selectOption("Germany");
+  await page.getByLabel("Department", { exact: true }).selectOption("Engineering");
+  await page.getByTestId("cohort-count").getByText("Cohort count: 58", { exact: true }).waitFor();
+  await page.getByTestId("cohort-count").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(4500);
 
   // 2. Navigate to Employee Directory
   await page.getByRole("button", { name: "Employees" }).click();
@@ -127,29 +133,24 @@ try {
     .locator("tbody tr.employee-row")
     .filter({ hasText: "ACME-00001" });
   await employeeRow.waitFor({ state: "visible" });
-  await page.waitForTimeout(700);
+  await page.waitForTimeout(2000);
   await employeeRow.click();
 
   // 3. Inspect Profile and Update Salary
   const dialog = page.getByRole("dialog");
   await dialog.getByText("Salary history").waitFor();
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(2500);
   await dialog.getByRole("button", { name: "Edit salary" }).first().click();
   const salaryInput = dialog.locator('input[name="base_salary"]');
   await salaryInput.fill("123456.78");
   const effectiveDate = dialog.locator('input[name="effective_date"]');
-  const today = new Date();
-  await effectiveDate.fill(
-    `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
-      today.getDate()
-    ).padStart(2, "0")}`
-  );
-  await page.waitForTimeout(700);
+  await effectiveDate.fill(new Date().toISOString().slice(0, 10));
+  await page.waitForTimeout(2000);
   await dialog.getByRole("button", { name: "Save changes" }).click();
   await page.getByRole("status").getByText(/Salary updated for/).waitFor();
   await dialog.getByText("Salary history").waitFor();
   await dialog.locator(".history-list").getByText("$123,456.78").waitFor();
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(4500);
 
   const video = page.video();
   await context.close();
