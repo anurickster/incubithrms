@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --test 'backend/test/*.test.js' 'frontend/src/lib/*.test.js'",
+    "test:e2e": "node scripts/test-e2e.js",
     "api": "node backend/server.js",
     "seed": "node backend/seed.js",
     "demo:video": "node scripts/demo-video.js"

@@ -203,11 +203,7 @@ export function EmployeeDirectory({
           </thead>
           <tbody>
             {directoryLoading && employees.employees.length === 0 ? (
-              <tr>
-                <td colSpan="6">
-                  <div className="table-loading">Loading employee records…</div>
-                </td>
-              </tr>
+              <TableSkeletonRows count={isOverviewSnippet ? 5 : 8} />
             ) : employees.employees.length === 0 ? (
               <tr>
                 <td colSpan="6">
@@ -316,6 +312,58 @@ export function EmployeeDirectory({
   );
 }
 
+function TableSkeletonRows({ count = 5 }) {
+  return Array.from({ length: count }).map((_, index) => (
+    <tr key={`skeleton-${index}`} className="skeleton-row" aria-hidden="true">
+      <td>
+        <div className="employee-cell">
+          <div className="skeleton skeleton-circle shimmer" />
+          <div className="employee-identity">
+            <div
+              className="skeleton skeleton-line shimmer"
+              style={{ width: "125px", height: "13px", marginBottom: "4px" }}
+            />
+            <div
+              className="skeleton skeleton-line shimmer"
+              style={{ width: "75px", height: "10px" }}
+            />
+          </div>
+        </div>
+      </td>
+      <td>
+        <div
+          className="skeleton skeleton-pill shimmer"
+          style={{ width: "95px", height: "22px", borderRadius: "12px" }}
+        />
+      </td>
+      <td>
+        <div
+          className="skeleton skeleton-line shimmer"
+          style={{ width: "105px", height: "13px" }}
+        />
+      </td>
+      <td>
+        <div
+          className="skeleton skeleton-line shimmer"
+          style={{ width: "85px", height: "14px" }}
+        />
+      </td>
+      <td>
+        <div
+          className="skeleton skeleton-line shimmer"
+          style={{ width: "75px", height: "12px" }}
+        />
+      </td>
+      <td>
+        <div
+          className="skeleton skeleton-action shimmer"
+          style={{ width: "24px", height: "24px", borderRadius: "50%" }}
+        />
+      </td>
+    </tr>
+  ));
+}
+
 function SortMark({ active, direction }) {
   return (
     <span className={`sort-mark ${active ? "sort-active" : ""}`}>
@@ -337,4 +385,3 @@ export function Avatar({ firstName, lastName, small = false }) {
     </span>
   );
 }
-

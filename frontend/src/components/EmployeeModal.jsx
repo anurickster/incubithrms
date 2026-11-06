@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatMoney } from "../lib/format.js";
 import { Avatar } from "./EmployeeDirectory.jsx";
 import { Icon } from "./Icons.jsx";
@@ -12,6 +12,69 @@ export function EmployeeModal({
   saving,
 }) {
   const [editing, setEditing] = useState(false);
+  const modalRef = useRef(null);
+
+  // Focus trapping and keyboard accessibility (Escape key, Tab cycling)
+  useEffect(() => {
+    if (!selectedEmployee) return;
+
+    const previousActiveElement = document.activeElement;
+    const modalElement = modalRef.current;
+    if (!modalElement) return;
+
+    const getFocusables = () => {
+      return Array.from(
+        modalElement.querySelectorAll(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+    };
+
+    // Auto-focus the close button or first interactive control
+    const timer = setTimeout(() => {
+      const focusables = getFocusables();
+      if (focusables.length > 0 && !modalElement.contains(document.activeElement)) {
+        focusables[0].focus();
+      }
+    }, 50);
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key === "Tab") {
+        const focusables = getFocusables();
+        if (focusables.length === 0) return;
+
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+
+        if (event.shiftKey) {
+          if (document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("keydown", handleKeyDown);
+      if (previousActiveElement && typeof previousActiveElement.focus === "function") {
+        previousActiveElement.focus();
+      }
+    };
+  }, [selectedEmployee, editing, modalLoading, onClose]);
 
   if (!selectedEmployee) return null;
 
@@ -56,6 +119,7 @@ export function EmployeeModal({
       role="presentation"
     >
       <section
+        ref={modalRef}
         className="employee-modal"
         role="dialog"
         aria-modal="true"
@@ -87,7 +151,16 @@ export function EmployeeModal({
         </div>
 
         {modalLoading ? (
-          <div className="modal-loading">Loading profile…</div>
+          <div className="modal-skeleton" aria-label="Loading profile details">
+            <div className="profile-details-grid" style={{ marginBottom: "20px" }}>
+              <div className="skeleton shimmer" style={{ height: "48px", borderRadius: "8px" }} />
+              <div className="skeleton shimmer" style={{ height: "48px", borderRadius: "8px" }} />
+              <div className="skeleton shimmer" style={{ height: "48px", borderRadius: "8px" }} />
+              <div className="skeleton shimmer" style={{ height: "48px", borderRadius: "8px" }} />
+            </div>
+            <div className="skeleton shimmer" style={{ height: "76px", borderRadius: "8px", marginBottom: "20px" }} />
+            <div className="skeleton shimmer" style={{ height: "130px", borderRadius: "8px" }} />
+          </div>
         ) : editing ? (
           <form className="salary-form" onSubmit={handleSubmit}>
             <div className="form-section-label">
@@ -291,4 +364,3 @@ function countryMark(country) {
   };
   return marks[country] ?? "•";
 }
-
