@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test, { afterEach, beforeEach, describe } from "node:test";
 import { closeAllDatabases, initializeDatabase, openDatabase } from "../database.js";
-import { ConflictError, getEmployee, getStats, listEmployees, updateSalary } from "../service.js";
+import { ConflictError, ValidationError, exportEmployeesCsv, getEmployee, getStats, listEmployees, updateSalary } from "../service.js";
 
 describe("Compensation correctness regressions", () => {
   let directory;
@@ -71,6 +71,64 @@ describe("Compensation correctness regressions", () => {
   });
 
   const payload = { base_salary: "150.00", currency: "eur", effective_date: "2021-01-01" };
+
+  test("stale salary edits cannot overwrite a later change; identical retries still work", () => {
+    const guarded = { ...payload, expected_salary_effective_date: "2020-01-01" };
+    const options = { dbPath, idempotencyKey: "guarded-request" };
+    const first = updateSalary("TEST-0", guarded, options);
+    assert.deepEqual(updateSalary("TEST-0", guarded, options), first);
+
+    assert.throws(() => updateSalary("TEST-0", {
+      ...guarded, base_salary: 160, effective_date: "2022-01-01",
+    }, { dbPath, idempotencyKey: "stale-request" }), /changed since you opened it/);
+    assert.deepEqual(getEmployee("TEST-0", dbPath), first);
+    const db = openDatabase(dbPath);
+    assert.equal(db.prepare("SELECT COUNT(*) AS total FROM audit_events").get().total, 1);
+    assert.equal(db.prepare("SELECT COUNT(*) AS total FROM idempotency_keys WHERE key = 'stale-request'").get().total, 0);
+
+    const refreshed = updateSalary("TEST-0", {
+      ...payload, base_salary: 160, effective_date: "2022-01-01", expected_salary_effective_date: first.salary_effective_date,
+    }, { dbPath });
+    assert.equal(refreshed.base_salary, 160);
+    assert.equal(refreshed.salary_history.length, 2);
+  });
+
+  test("malformed expected salary date is rejected", () => {
+    for (const date of [null, false, "bad", "2025-02-30"]) {
+      assert.throws(() => updateSalary("TEST-0", { ...payload, expected_salary_effective_date: date }, { dbPath }), ValidationError);
+    }
+  });
+
+  test("full-name search and CSV export use the same literal substring filters", () => {
+    const filters = { dbPath, query: "Test Employee", country: "Germany", department: "Engineering" };
+    const result = listEmployees(filters);
+    assert.equal(result.total, 4);
+    const lines = exportEmployeesCsv(filters).split("\r\n");
+    assert.equal(lines.length, result.total + 1);
+    assert.ok(result.employees.every((employee) => lines.some((line) => line.startsWith(employee.employee_id + ","))));
+    for (const query of ["%", "TEST_0", "TEST\\0"]) {
+      assert.equal(listEmployees({ dbPath, query }).total, 0);
+      assert.equal(exportEmployeesCsv({ dbPath, query }).split("\r\n").length, 1);
+    }
+  });
+
+  test("directory and export reject invalid or overly long search values", () => {
+    for (const query of [[], "x".repeat(101)]) {
+      assert.throws(() => listEmployees({ dbPath, query }), ValidationError);
+      assert.throws(() => exportEmployeesCsv({ dbPath, query }), ValidationError);
+    }
+  });
+
+  test("descending name sort applies to surnames and the sort allowlist excludes prototypes", () => {
+    const db = openDatabase(dbPath);
+    db.exec("UPDATE employees SET first_name = 'Zoe', last_name = 'Adams' WHERE employee_id = 'TEST-0';");
+    db.exec("UPDATE employees SET first_name = 'Alice', last_name = 'Zimmer' WHERE employee_id = 'TEST-1';");
+    assert.equal(listEmployees({ dbPath, sort: "name", direction: "asc" }).employees[0].employee_id, "TEST-0");
+    assert.equal(listEmployees({ dbPath, sort: "name", direction: "desc" }).employees[0].employee_id, "TEST-1");
+    for (const sort of ["__proto__", "constructor", "toString"]) {
+      assert.throws(() => listEmployees({ dbPath, sort }), ValidationError);
+    }
+  });
 
   test("normalized retry replays once and rejects another employee or payload", () => {
     const options = { dbPath, idempotencyKey: "same-request" };

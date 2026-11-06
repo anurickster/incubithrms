@@ -1,3 +1,11 @@
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 export async function request(path, options) {
   let response;
   try {
@@ -11,7 +19,7 @@ export async function request(path, options) {
   }
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
-    throw new Error(payload?.error || "The salary service could not complete this request. Please try again.");
+    throw new ApiError(payload?.error || "The salary service could not complete this request. Please try again.", response.status);
   }
   return response.json();
 }

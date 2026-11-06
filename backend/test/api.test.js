@@ -168,6 +168,32 @@ describe("Salary API HTTP Tests", () => {
     assert.equal(res.data.employees[0].currency, "INR");
   });
 
+  test("full-name search works and repeated search parameters return a validation error", async () => {
+    const fullName = await dispatchRequest(handler, { url: "/api/employees?q=Aisha%20Khan" });
+    assert.equal(fullName.status, 200);
+    assert.equal(fullName.data.total, 1);
+    for (const url of ["/api/employees?q=Aisha&q=Khan", "/api/employees/export?q=Aisha&q=Khan", "/api/employees?sort=__proto__"]) {
+      const invalid = await dispatchRequest(handler, { url });
+      assert.equal(invalid.status, 400);
+    }
+  });
+
+  test("stale expected salary date returns 409 without changing the latest salary", async () => {
+    const path = "/api/employees/ACME-TEST01";
+    const saved = await dispatchRequest(handler, { method: "PATCH", url: path, body: {
+      base_salary: 70000, currency: "INR", effective_date: "2021-01-01", expected_salary_effective_date: "2020-01-02",
+    } });
+    assert.equal(saved.status, 200);
+    const stale = await dispatchRequest(handler, { method: "PATCH", url: path, body: {
+      base_salary: 80000, currency: "INR", effective_date: "2022-01-01", expected_salary_effective_date: "2020-01-02",
+    } });
+    assert.equal(stale.status, 409);
+    assert.match(stale.data.error, /changed since you opened it/);
+    const current = await dispatchRequest(handler, { url: path });
+    assert.equal(current.data.base_salary, 70000);
+    assert.equal(current.data.salary_history.length, 2);
+  });
+
   test("GET /api/employees/:id returns profile and history", async () => {
     const res = await dispatchRequest(handler, {
       method: "GET",

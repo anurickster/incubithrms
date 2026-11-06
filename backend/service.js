@@ -79,6 +79,29 @@ export function validateEffectiveDate(dateStr) {
   return dateStr;
 }
 
+function employeeFilters({ query, country, department, currency }) {
+  for (const [name, value] of Object.entries({ query, country, department, currency })) {
+    if (typeof value !== "string") throw new ValidationError(`${name} must be a string.`);
+  }
+  const trimmedQuery = query.trim();
+  if (trimmedQuery.length > 100) throw new ValidationError("Query string cannot exceed 100 characters.");
+  const clauses = [];
+  const params = [];
+  if (trimmedQuery) {
+    const columns = ["employee_id", "first_name", "last_name", "email", "first_name || ' ' || last_name"];
+    clauses.push(`(${columns.map((column) => `${column} LIKE ? ESCAPE '\\'`).join(" OR ")})`);
+    const pattern = `%${trimmedQuery.replace(/[\\%_]/g, "\\$&")}%`;
+    params.push(...columns.map(() => pattern));
+  }
+  for (const [column, value] of Object.entries({ country, department, currency: currency.toUpperCase() })) {
+    if (value) {
+      clauses.push(`${column} = ?`);
+      params.push(value);
+    }
+  }
+  return { whereClause: clauses.length ? ` WHERE ${clauses.join(" AND ")}` : "", params };
+}
+
 export function listEmployees({
   dbPath,
   query = "",
@@ -99,7 +122,7 @@ export function listEmployees({
   if (!Number.isInteger(sizeNum) || sizeNum < 1 || sizeNum > 100) {
     throw new ValidationError("Page size must be between 1 and 100.");
   }
-  if (!SORT_COLUMNS[sort]) {
+  if (!Object.hasOwn(SORT_COLUMNS, sort)) {
     throw new ValidationError("Unsupported sort field.");
   }
   const normalizedDirection = String(direction).toLowerCase();
@@ -107,40 +130,11 @@ export function listEmployees({
     throw new ValidationError("Sort direction must be asc or desc.");
   }
 
-  const trimmedQuery = query.trim();
-  if (trimmedQuery.length > 100) {
-    throw new ValidationError("Query string cannot exceed 100 characters.");
-  }
-
-  const clauses = [];
-  const params = [];
-
-  if (trimmedQuery) {
-    clauses.push(
-      "(employee_id LIKE ? OR first_name LIKE ? OR last_name LIKE ? OR email LIKE ?)"
-    );
-    const pattern = `%${trimmedQuery}%`;
-    params.push(pattern, pattern, pattern, pattern);
-  }
-
-  if (country) {
-    clauses.push("country = ?");
-    params.push(country);
-  }
-  if (department) {
-    clauses.push("department = ?");
-    params.push(department);
-  }
-  if (currency) {
-    clauses.push("currency = ?");
-    params.push(currency.toUpperCase());
-  }
-
-  const whereClause = clauses.length > 0 ? ` WHERE ${clauses.join(" AND ")}` : "";
-  let orderClause = SORT_COLUMNS[sort];
-  if (sort === "name") {
-    orderClause += ", first_name COLLATE NOCASE";
-  }
+  const { whereClause, params } = employeeFilters({ query, country, department, currency });
+  const orderDirection = normalizedDirection.toUpperCase();
+  const orderClause = sort === "name"
+    ? `last_name COLLATE NOCASE ${orderDirection}, first_name COLLATE NOCASE ${orderDirection}`
+    : `${SORT_COLUMNS[sort]} ${orderDirection}`;
 
   const db = openDatabase(dbPath);
   const countSql = `SELECT COUNT(*) AS total FROM employees${whereClause}`;
@@ -152,7 +146,7 @@ export function listEmployees({
     SELECT employee_id, first_name, last_name, email, country, department,
            job_title, hire_date, base_salary_cents, currency, salary_effective_date
     FROM employees${whereClause}
-    ORDER BY ${orderClause} ${normalizedDirection.toUpperCase()}, employee_id ASC
+    ORDER BY ${orderClause}, employee_id ASC
     LIMIT ? OFFSET ?
   `;
 
@@ -229,7 +223,11 @@ export function updateSalary(employeeId, payload, options = {}) {
   }
 
   const effectiveDate = validateEffectiveDate(payload.effective_date);
-  const requestJson = JSON.stringify({ salary_cents: salaryCents, currency, effective_date: effectiveDate });
+  const expectedDate = payload.expected_salary_effective_date === undefined
+    ? undefined : validateEffectiveDate(payload.expected_salary_effective_date);
+  const requestJson = JSON.stringify({ salary_cents: salaryCents, currency, effective_date: effectiveDate,
+    ...(expectedDate !== undefined ? { expected_salary_effective_date: expectedDate } : {}),
+  });
 
   // The lock covers the replay check, current-value read, mutation, and cached
   // response. A failed cache write must roll back the salary and audit records.
@@ -254,6 +252,10 @@ export function updateSalary(employeeId, payload, options = {}) {
     if (!current) {
       db.exec("COMMIT;");
       return null;
+    }
+
+    if (expectedDate !== undefined && expectedDate !== current.salary_effective_date) {
+      throw new ConflictError("This employee's salary changed since you opened it. Reload the latest salary before editing again.");
     }
 
     if (effectiveDate <= current.salary_effective_date) {
@@ -473,31 +475,7 @@ export function getStats({ dbPath, country = "", department = "" } = {}) {
 }
 
 export function exportEmployeesCsv({ dbPath, query = "", country = "", department = "", currency = "" } = {}) {
-  const clauses = [];
-  const params = [];
-
-  const trimmedQuery = query.trim();
-  if (trimmedQuery) {
-    clauses.push(
-      "(employee_id LIKE ? OR first_name LIKE ? OR last_name LIKE ? OR email LIKE ?)"
-    );
-    const pattern = `%${trimmedQuery}%`;
-    params.push(pattern, pattern, pattern, pattern);
-  }
-  if (country) {
-    clauses.push("country = ?");
-    params.push(country);
-  }
-  if (department) {
-    clauses.push("department = ?");
-    params.push(department);
-  }
-  if (currency) {
-    clauses.push("currency = ?");
-    params.push(currency.toUpperCase());
-  }
-
-  const whereClause = clauses.length > 0 ? ` WHERE ${clauses.join(" AND ")}` : "";
+  const { whereClause, params } = employeeFilters({ query, country, department, currency });
   const db = openDatabase(dbPath);
 
   const rows = db.prepare(`

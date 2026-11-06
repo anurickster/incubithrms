@@ -181,6 +181,27 @@ try {
   await dialog.getByRole("button", { name: "Done" }).click();
   await dialog.waitFor({ state: "hidden" });
 
+  // Simulate another tab changing the employee after this form was opened.
+  await page.goto(`${appUrl}/?tab=employees&employee=ACME-00002`, { waitUntil: "networkidle" });
+  await dialog.getByText("Salary history").waitFor();
+  await dialog.getByRole("button", { name: "Edit salary" }).first().click();
+  await dialog.locator('input[name="base_salary"]').fill("150000.25");
+  const external = await fetch(`http://127.0.0.1:${apiPort}/api/employees/ACME-00002`, {
+    method: "PATCH", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ base_salary: 149000, currency: "GBP", effective_date: "2025-01-01" }),
+  });
+  assert.equal(external.status, 200);
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await dialog.getByRole("alert").getByText(/changed since you opened it/).waitFor();
+  await dialog.getByRole("button", { name: "Reload latest salary" }).click();
+  await dialog.locator(".current-salary").getByText("£149,000.00", { exact: true }).waitFor();
+  await dialog.getByRole("button", { name: "Edit salary" }).first().click();
+  await dialog.locator('input[name="base_salary"]').fill("150000.25");
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await dialog.locator(".history-list").getByText("£150,000.25", { exact: true }).waitFor();
+  await dialog.getByRole("button", { name: "Done" }).click();
+  console.log("✔ Stale edit rejection, visible error, reload, and resubmission verified");
+
   // Test 6: Verify Tab State & Filter Persistence Across Refresh
   await page.goto(`${appUrl}/?tab=analytics&question=percentiles`, { waitUntil: "networkidle" });
   await page.getByText("Percentile Distribution & Pay Dispersion").waitFor();

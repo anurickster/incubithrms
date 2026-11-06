@@ -76,7 +76,7 @@ export function PayIntelligence({
             className={`question-pill ${activeQuestion === "bands" ? "active" : ""}`}
             onClick={() => setActiveQuestion("bands")}
           >
-            Role &amp; Title Pay Bands
+            Salary Ranges by Role
           </button>
           <button
             role="tab"
@@ -103,7 +103,7 @@ export function PayIntelligence({
             <div>
               <div className="section-title">Salary Ranges by Job Title</div>
               <div className="section-subtitle">
-                Explore minimum, median, and maximum pay bands for standardized roles within each department.
+                Explore observed minimum, median, and maximum annual salaries by role and currency. These are not approved compensation bands.
               </div>
             </div>
             <div className="filter-group">

@@ -11,6 +11,8 @@ export function EmployeeModal({
   onSaveSalary,
   visibleCurrencies,
   saving,
+  salaryError,
+  onReloadSalary,
 }) {
   const [editing, setEditing] = useState(false);
   const modalRef = useRef(null);
@@ -90,6 +92,7 @@ export function EmployeeModal({
       base_salary: form.get("base_salary"),
       currency: form.get("currency"),
       effective_date: form.get("effective_date"),
+      expected_salary_effective_date: selectedEmployee.salary_effective_date,
     });
     if (success) {
       setEditing(false);
@@ -135,6 +138,20 @@ export function EmployeeModal({
             </span>
           </div>
         </div>
+
+        {salaryError && (
+          <div className="alert alert-error" role="alert">
+            <span>{salaryError.message}</span>
+            {salaryError.conflict && (
+              <button type="button" className="text-button" disabled={modalLoading || saving}
+                onClick={async () => {
+                  if (await onReloadSalary()) setEditing(false);
+                }}>
+                Reload latest salary
+              </button>
+            )}
+          </div>
+        )}
 
         {modalLoading ? (
           <div className="modal-skeleton" aria-label="Loading profile details">

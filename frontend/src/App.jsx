@@ -35,6 +35,7 @@ export function App() {
   const [cohortDepartment, setCohortDepartment] = useState(initialUrlState.cohortDepartment);
   const [modalLoading, setModalLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [salaryError, setSalaryError] = useState(null);
   const [notice, setNotice] = useState("");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -115,6 +116,7 @@ export function App() {
     setEmployeeId("");
     setSelectedEmployee(null);
     setError("");
+    setSalaryError(null);
   }, []);
 
   const loadStats = useCallback(async () => {
@@ -221,6 +223,7 @@ export function App() {
   }
 
   function openEmployee(employee) {
+    setSalaryError(null);
     setModalLoading(true);
     setSelectedEmployee(employee);
     setEmployeeId(employee.employee_id);
@@ -229,6 +232,7 @@ export function App() {
   async function saveSalary(payload) {
     setSaving(true);
     setError("");
+    setSalaryError(null);
     const body = JSON.stringify(payload);
     const signature = `${selectedEmployee.employee_id}:${body}`;
     if (salaryAttempt.current?.signature !== signature) {
@@ -254,10 +258,26 @@ export function App() {
       }
       return true;
     } catch (cause) {
-      setError(cause.message);
+      setSalaryError({ message: cause.message, conflict: cause.status === 409 });
       return false;
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function reloadSalary() {
+    setModalLoading(true);
+    try {
+      const latest = await request(`/api/employees/${encodeURIComponent(employeeId)}`);
+      setSelectedEmployee(latest);
+      setSalaryError(null);
+      salaryAttempt.current = null;
+      return true;
+    } catch (cause) {
+      setSalaryError({ message: cause.message, conflict: true });
+      return false;
+    } finally {
+      setModalLoading(false);
     }
   }
 
@@ -350,11 +370,11 @@ export function App() {
               <Icon name="shield" size={16} />
             </span>
             <div>
-              <strong>Private by design</strong>
+              <strong>Assessment demo</strong>
               <span>
-                Salary data is sensitive.
+                Fictional employee data.
                 <br />
-                Handle with care.
+                No sign-in required.
               </span>
             </div>
           </div>
@@ -456,7 +476,7 @@ export function App() {
                   ? "A clear picture of how your organization pays people across 10 countries."
                   : activePage === "employees"
                   ? "Search, filter, and manage compensation across your 10,000 employees."
-                  : "Answering strategic questions on role bands, salary percentiles, and pay dispersion."}
+                  : "Explore role salaries, salary percentiles, and pay dispersion."}
               </p>
             </div>
 
@@ -557,7 +577,7 @@ export function App() {
               © 2026 ACME Corporation <span className="footer-dot">·</span> Compensation workspace
             </span>
             <span>
-              <Icon name="shield" size={14} /> Confidential — for internal HR use only
+              <Icon name="shield" size={14} /> Synthetic data · Assessment demo
             </span>
           </footer>
         </div>
@@ -571,6 +591,8 @@ export function App() {
         onSaveSalary={saveSalary}
         visibleCurrencies={visibleCurrencies}
         saving={saving}
+        salaryError={salaryError}
+        onReloadSalary={reloadSalary}
       />
     </div>
   );
