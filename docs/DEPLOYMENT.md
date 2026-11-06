@@ -1,46 +1,42 @@
-# Render deployment setup
+# Free Render deployment
 
-Status: prepared and locally verified; **not yet deployed**. Review the paid service and disk estimate in Render before creating resources.
+Status: configuration prepared; deployment verification pending.
 
-## Configuration to review
+The free assessment demo serves the React UI and Node API from one web service. It automatically seeds 10,000 fictional employees. **Salary edits reset when Render restarts the service**, including after idle shutdown, because free web services cannot attach a persistent disk. The UI displays this limitation. It is not suitable for real employee information.
 
-The repository's [`render.yaml`](../render.yaml) creates one Node web service with the built React UI and API on the same origin:
+## Configuration
 
 | Field | Value |
 |---|---|
-| Git repository | `https://github.com/anurickster/incubithrms` |
+| Repository | `https://github.com/anurickster/incubithrms` |
 | Branch | `main` |
 | Runtime | Node 22.22.3 from `.node-version` |
 | Region | Singapore |
-| Instance | Starter (paid) |
+| Instance | **Free ($0)** |
 | Build | `npm ci --include=dev && npm test && npm run build` |
 | Start | `npm start` |
 | Host | `0.0.0.0` |
-| Port | Use Render's supplied `PORT` |
+| Port | Render's supplied `PORT` |
 | Health check | `/api/health` |
-| Persistent disk | 1 GB, mounted at `/var/data` |
-| Database | `/var/data/salaries.sqlite3` |
-| Auto-deploys | Off; deploy reviewed commits manually |
+| Database | `/tmp/compwise/salaries.sqlite3` (temporary storage) |
+| Reset notice | `DEMO_EPHEMERAL_STORAGE=true` |
+| Auto-deploys | Off |
 
-Render persistent disks require a paid service. Free instances use ephemeral storage, which would lose salary edits on restart/redeploy. Current pricing and the final estimate should be checked in the dashboard. Sources: [persistent disks](https://render.com/docs/disks), [web service port binding](https://render.com/docs/web-services#port-binding), [Node version selection](https://render.com/docs/node-version), [Blueprint specification](https://render.com/docs/blueprint-spec).
+[`render.yaml`](../render.yaml) declares this setup without any paid service or disk. The same values can be entered manually in the dashboard.
 
-## Create after reviewing the setup
+## Free-tier limits
 
-1. Sign in to [Render Dashboard](https://dashboard.render.com/) using Anurag's Chrome profile.
-2. Create a **Blueprint** using the repository and `main`, or create a Node web service manually with the fields above. Grant repository access only if needed and review the requested scope.
-3. Review the service and disk costs before applying. Do not select a static site: it cannot run this backend.
-4. Apply the reviewed configuration. The database is created and seeded at runtime, when the persistent disk is mounted. Do not seed during the build.
-5. Wait for a successful deployment and record Render's actual HTTPS URL. Do not assume the name is available.
+Render spins down an inactive free web service after 15 minutes. A later request starts it again and can take around a minute to load. SQLite is recreated and reseeded when the temporary filesystem is replaced. The free database is not a durable ledger; do not expect edits to survive a service restart or redeploy. Free services also have monthly usage limits. Sources: [Render free services](https://render.com/docs/free), [persistent disks](https://render.com/docs/disks), [port binding](https://render.com/docs/web-services#port-binding), [Node version selection](https://render.com/docs/node-version).
 
-## Verify the deployed app
+To preserve salary edits across restarts, use a persistent disk on a paid service or redesign database access for a separate durable database. The free assessment deployment deliberately keeps the tested Node/SQLite application rather than introducing another database provider at submission time.
 
-- `/api/health` returns healthy and 10,000 employees.
-- Overview, directory search/filter, CSV download, and Pay Intelligence load.
-- Germany + Engineering contains 58 seeded employees and its analytics match the directory.
-- Update a fictional employee's salary, inspect history, and reload the profile URL.
-- Restart/redeploy the service; confirm that the salary edit and history persist and the seed does not overwrite them.
-- Add the verified live URL at the top of README and mark the deployment item complete in `docs/SUBMISSION.md`.
+## Verify before submission
 
-## Operating limits
+- Confirm the actual HTTPS URL loads; do not infer it from the service name.
+- Check `/api/health` returns healthy with 10,000 employees.
+- Test directory search/filter, cohort analytics, CSV export, and a synthetic salary update.
+- Reload a profile URL and confirm the updated history within the running instance.
+- Verify the UI reset notice is visible.
+- Record the deployed URL in README and the submission checklist.
 
-This is an unauthenticated synthetic-data demo. Do not upload real employee information. Use one service instance with its attached disk; this design does not support horizontal scaling. SQLite calls are synchronous, so long operations can block HTTP work. The disk prevents routine restart/redeploy data loss; it does not replace an application backup/restore procedure. Do not copy an active WAL database file alone as a backup. Render disk deployments can have brief downtime; no zero-downtime guarantee is made.
+Git repository code and local SQLite files remain persistent on the developer's computer. The reset limitation applies to the free hosted instance.

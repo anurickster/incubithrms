@@ -47,4 +47,4 @@ A conflicting key returns 409 without mutation. An error in any write rolls back
 
 Every statistics query applies optional country and department filters to counts and salary rows. Values are sorted within each currency. Linear interpolation computes P25, median, and P75; integer hundredths are rounded at the output boundary. Country benchmarks include all departments; selected-cohort statistics apply both filters. Multiple currencies are always displayed separately.
 
-One Node process serves the UI and API on the same origin. The Render configuration uses a single paid service and attached persistent disk, with runtime seeding and a database readiness endpoint. This is prepared infrastructure, not evidence of an existing live deployment.
+One Node process serves the UI and API on the same origin. The Render configuration uses a single free service with temporary SQLite storage, runtime seeding, and a database readiness endpoint. Salary edits reset on hosted service restart; the UI discloses this. Local deployment can use a durable filesystem, and a paid persistent disk would remove this particular reset limitation.

@@ -8,10 +8,11 @@
 - [x] Architecture, trade-offs, reproducible performance evidence, and AI workflow notes.
 - [x] Demo recording at `artifacts/demo/compwise-walkthrough.webm`.
 - [x] Render blueprint and deployment instructions prepared.
-- [ ] Create the reviewed Render service and persistent disk.
-- [ ] Verify the live UI/API and persistence across service restart.
+- [ ] Create the free Render web service (no paid disk).
+- [ ] Verify the live UI/API and visible free-tier data-reset notice.
 - [ ] Add the actual deployed URL to README and this checklist.
 - [ ] Confirm GitHub Actions succeeds for the final remote commit.
+- [x] Document that free-hosted SQLite edits reset on service restart.
 - [ ] Reply to the original assessment email with repository, live app, and video links.
 
 Repository: https://github.com/anurickster/incubithrms

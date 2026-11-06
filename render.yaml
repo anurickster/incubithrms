@@ -1,9 +1,9 @@
-# Paid service + disk. Review the Render cost estimate before applying.
+# Free assessment demo. SQLite resets when Render restarts the service.
 services:
   - type: web
     name: compwise-acme
     runtime: node
-    plan: starter
+    plan: free
     region: singapore
     branch: main
     buildCommand: npm ci --include=dev && npm test && npm run build
@@ -16,8 +16,6 @@ services:
       - key: HOST
         value: 0.0.0.0
       - key: SALARY_DB_PATH
-        value: /var/data/salaries.sqlite3
-    disk:
-      name: salary-data
-      mountPath: /var/data
-      sizeGB: 1
+        value: /tmp/compwise/salaries.sqlite3
+      - key: DEMO_EPHEMERAL_STORAGE
+        value: "true"

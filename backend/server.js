@@ -191,7 +191,10 @@ export function createSalaryHandler(options = {}) {
             country: parsedUrl.query.country || "",
             department: parsedUrl.query.department || "",
           });
-          sendJson(res, 200, stats);
+          sendJson(res, 200, {
+            ...stats,
+            demo: { ephemeral_storage: process.env.DEMO_EPHEMERAL_STORAGE === "true" },
+          });
           return;
         }
 

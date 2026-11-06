@@ -11,7 +11,7 @@ Earlier development used AI to help frame scope, create backend/schema/test code
 - Add overview, directory, salary editor, analytics, loading/error states, and a demo script.
 
 ## Submission review and correction, 6 November 2026
-The user supplied the complete assessment and requested a repository review, then authorized the fixes: “ok do all the things and use Anurag Chrome profile for browser things”. They selected “Use Render; prepare setup first” and clarified that this is a personal repository, without Azure work-item metadata.
+The user supplied the complete assessment and requested a repository review, then authorized the fixes: “ok do all the things and use Anurag Chrome profile for browser things”. They initially selected “Use Render; prepare setup first”, then requested a free deployment. They clarified that this is a personal repository, without Azure work-item metadata.
 
 The review agent read the source, requirements, artifacts, and commit history; ran tests/build/browser scripts; and reproduced suspected bugs with a disposable database. Passing tests did not establish correctness: the review found ignored statistics filters, a reused key returning another employee's response, and employee deep links being removed before profile loading.
 
@@ -26,4 +26,4 @@ Corrections and checks:
 Interactive browser checks use Anurag's Chrome profile. Automated tests and video recording use a disposable browser and temporary synthetic database. No genuine employee data is sent to an AI service by the application, and the product has no LLM integration.
 
 ## Remaining human decisions
-Review the paid Render estimate before resource creation, verify the live service and restart persistence, and send the final repository/live-app/video links in the original email thread. These steps are not implied by a local test pass.
+Complete the free Render sign-in/deployment, verify the live service and visible temporary-storage limitation, and send the final repository/live-app/video links in the original email thread. These steps are not implied by a local test pass.

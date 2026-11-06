@@ -403,6 +403,11 @@ export function App() {
         </header>
 
         <div className="page-content">
+          {stats?.demo?.ephemeral_storage && (
+            <div className="alert" role="note">
+              Free assessment demo: salary edits reset when the server restarts. All employee records are fictional.
+            </div>
+          )}
           {error && (
             <div className="alert alert-error" role="alert">
               <span>{error}</span>

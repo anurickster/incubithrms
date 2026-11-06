@@ -2,7 +2,7 @@
 
 A React + Node.js application for an HR Manager to maintain annual base salaries and explore compensation across **10,000 fictional employees**, 10 countries, and 9 currencies. SQLite stores employee records, salary history, audit events, and retry responses.
 
-**Deployment status:** Render configuration is prepared; a live deployment has not yet been created. The selected setup uses a paid service and persistent disk. See [Render setup](docs/DEPLOYMENT.md).
+**Deployment status:** Free Render deployment is being configured. See [Render setup](docs/DEPLOYMENT.md). The free service uses temporary SQLite storage: salary edits reset when the server restarts, including after idle shutdown. All records are fictional.
 
 **[Watch the demo video](artifacts/demo/compwise-walkthrough.webm)** · [One-page requirements](docs/REQUIREMENTS.md) · [Architecture](artifacts/architecture.md) · [Decisions](artifacts/tradeoffs-and-decisions.md) · [AI workflow](artifacts/ai-workflow-prompts.md)
 
@@ -27,7 +27,8 @@ For frontend development, run `npm run api` and `npm run dev` in separate termin
 |---|---|---|
 | `PORT` | `8000` | HTTP port; Render supplies its own value |
 | `HOST` | `127.0.0.1` | Set `0.0.0.0` on Render |
-| `SALARY_DB_PATH` | `data/salaries.sqlite3` | SQLite path; Render uses `/var/data/salaries.sqlite3` on a persistent disk |
+| `SALARY_DB_PATH` | `data/salaries.sqlite3` | SQLite path; free Render uses `/tmp/compwise/salaries.sqlite3` |
+| `DEMO_EPHEMERAL_STORAGE` | unset | Set `true` to show the free-hosting reset notice |
 
 `npm run seed` also runs the idempotent seed directly. To use an isolated database, set `SALARY_DB_PATH` before starting the API.
 
