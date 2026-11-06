@@ -7,6 +7,52 @@ import { PayIntelligence } from "./components/PayIntelligence.jsx";
 
 const PAGE_SIZE = 10;
 
+export function getInitialUrlState() {
+  if (typeof window === "undefined") {
+    return {
+      tab: "overview",
+      page: 1,
+      query: "",
+      country: "",
+      department: "",
+      currency: "",
+      sort: "employee_id",
+      direction: "asc",
+      employeeId: "",
+      question: "bands",
+      dept: "Engineering",
+    };
+  }
+  const params = new URLSearchParams(window.location.search);
+  const rawTab = params.get("tab") || "overview";
+  const tab = ["overview", "employees", "analytics"].includes(rawTab) ? rawTab : "overview";
+  const rawPage = parseInt(params.get("page") || "1", 10);
+  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+  const query = params.get("q") || "";
+  const country = params.get("country") || "";
+  const department = params.get("department") || "";
+  const currency = params.get("currency") || "";
+  const sort = params.get("sort") || "employee_id";
+  const direction = params.get("direction") === "desc" ? "desc" : "asc";
+  const employeeId = params.get("employee") || "";
+  const question = params.get("question") || "bands";
+  const dept = params.get("dept") || "Engineering";
+
+  return {
+    tab,
+    page,
+    query,
+    country,
+    department,
+    currency,
+    sort,
+    direction,
+    employeeId,
+    question,
+    dept,
+  };
+}
+
 async function request(path, options) {
   try {
     const response = await fetch(path, {
@@ -29,17 +75,22 @@ async function request(path, options) {
 }
 
 export function App() {
-  const [activePage, setActivePage] = useState("overview");
+  const initialUrlState = useMemo(() => getInitialUrlState(), []);
+
+  const [activePage, setActivePage] = useState(initialUrlState.tab);
   const [stats, setStats] = useState(null);
-  const [employees, setEmployees] = useState({ employees: [], total: 0, pages: 0, page: 1 });
-  const [page, setPage] = useState(1);
-  const [queryInput, setQueryInput] = useState("");
-  const [query, setQuery] = useState("");
-  const [country, setCountry] = useState("");
-  const [department, setDepartment] = useState("");
-  const [currency, setCurrency] = useState("");
-  const [sort, setSort] = useState("employee_id");
-  const [direction, setDirection] = useState("asc");
+  const [employees, setEmployees] = useState({ employees: [], total: 0, pages: 0, page: initialUrlState.page });
+  const [page, setPage] = useState(initialUrlState.page);
+  const [queryInput, setQueryInput] = useState(initialUrlState.query);
+  const [query, setQuery] = useState(initialUrlState.query);
+  const [country, setCountry] = useState(initialUrlState.country);
+  const [department, setDepartment] = useState(initialUrlState.department);
+  const [currency, setCurrency] = useState(initialUrlState.currency);
+  const [sort, setSort] = useState(initialUrlState.sort);
+  const [direction, setDirection] = useState(initialUrlState.direction);
+  const [analyticsQuestion, setAnalyticsQuestion] = useState(initialUrlState.question);
+  const [analyticsDept, setAnalyticsDept] = useState(initialUrlState.dept);
+
   const [loading, setLoading] = useState(true);
   const [directoryLoading, setDirectoryLoading] = useState(false);
   const [error, setError] = useState("");
@@ -53,10 +104,123 @@ export function App() {
   const employeeQuery = useRef(null);
   employeeQuery.current = { page, sort, direction, query, country, department, currency };
 
+  // Debounce search query input to query filter
   useEffect(() => {
     const timer = window.setTimeout(() => setQuery(queryInput.trim()), 250);
     return () => window.clearTimeout(timer);
   }, [queryInput]);
+
+  // Synchronize active state with URL Query Parameters so refresh / sharing preserves full state
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const params = url.searchParams;
+
+    params.set("tab", activePage);
+
+    if (activePage === "employees") {
+      if (query) params.set("q", query); else params.delete("q");
+      if (country) params.set("country", country); else params.delete("country");
+      if (department) params.set("department", department); else params.delete("department");
+      if (currency) params.set("currency", currency); else params.delete("currency");
+      if (page > 1) params.set("page", String(page)); else params.delete("page");
+      if (sort !== "employee_id") params.set("sort", sort); else params.delete("sort");
+      if (direction !== "asc") params.set("direction", direction); else params.delete("direction");
+      params.delete("question");
+      params.delete("dept");
+    } else if (activePage === "analytics") {
+      if (analyticsQuestion && analyticsQuestion !== "bands") {
+        params.set("question", analyticsQuestion);
+      } else {
+        params.delete("question");
+      }
+      if (analyticsDept && analyticsDept !== "Engineering") {
+        params.set("dept", analyticsDept);
+      } else {
+        params.delete("dept");
+      }
+      params.delete("q");
+      params.delete("country");
+      params.delete("department");
+      params.delete("currency");
+      params.delete("page");
+      params.delete("sort");
+      params.delete("direction");
+    } else {
+      params.delete("q");
+      params.delete("country");
+      params.delete("department");
+      params.delete("currency");
+      params.delete("page");
+      params.delete("sort");
+      params.delete("direction");
+      params.delete("question");
+      params.delete("dept");
+    }
+
+    if (selectedEmployee) {
+      params.set("employee", selectedEmployee.employee_id);
+    } else {
+      params.delete("employee");
+    }
+
+    const newSearch = params.toString() ? `?${params.toString()}` : "";
+    if (window.location.search !== newSearch) {
+      window.history.replaceState(null, "", `${url.pathname}${newSearch}`);
+    }
+  }, [
+    activePage,
+    page,
+    query,
+    country,
+    department,
+    currency,
+    sort,
+    direction,
+    selectedEmployee,
+    analyticsQuestion,
+    analyticsDept,
+  ]);
+
+  // Handle browser back/forward buttons (popstate)
+  useEffect(() => {
+    function handlePopState() {
+      const state = getInitialUrlState();
+      setActivePage(state.tab);
+      setPage(state.page);
+      setQueryInput(state.query);
+      setQuery(state.query);
+      setCountry(state.country);
+      setDepartment(state.department);
+      setCurrency(state.currency);
+      setSort(state.sort);
+      setDirection(state.direction);
+      setAnalyticsQuestion(state.question);
+      setAnalyticsDept(state.dept);
+      if (state.employeeId) {
+        request(`/api/employees/${encodeURIComponent(state.employeeId)}`)
+          .then(setSelectedEmployee)
+          .catch(() => setSelectedEmployee(null));
+      } else {
+        setSelectedEmployee(null);
+      }
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  // On initial mount: if URL contains an employee ID, open their modal directly
+  useEffect(() => {
+    const initial = getInitialUrlState();
+    if (initial.employeeId) {
+      setModalLoading(true);
+      request(`/api/employees/${encodeURIComponent(initial.employeeId)}`)
+        .then(setSelectedEmployee)
+        .catch(() => {})
+        .finally(() => setModalLoading(false));
+    }
+  }, []);
 
   const loadStats = useCallback(async () => {
     const result = await request("/api/stats");
@@ -139,6 +303,18 @@ export function App() {
 
   const visibleCurrencies = useMemo(() => stats?.currencies ?? [], [stats]);
 
+  function switchTab(newTab) {
+    if (activePage !== newTab) {
+      setActivePage(newTab);
+      setMobileNavOpen(false);
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.set("tab", newTab);
+        window.history.pushState(null, "", url.toString());
+      }
+    }
+  }
+
   function handleSort(column) {
     if (sort === column) {
       setDirection((current) => (current === "asc" ? "desc" : "asc"));
@@ -190,7 +366,7 @@ export function App() {
     setCountry(cohortCountry);
     setDepartment(cohortDept);
     setPage(1);
-    setActivePage("employees");
+    switchTab("employees");
   }
 
   if (loading) {
@@ -212,7 +388,7 @@ export function App() {
           href="#"
           onClick={(e) => {
             e.preventDefault();
-            setActivePage("overview");
+            switchTab("overview");
           }}
         >
           <span className="brand-icon">
@@ -242,10 +418,7 @@ export function App() {
 
         <button
           className={`nav-item ${activePage === "overview" ? "active" : ""}`}
-          onClick={() => {
-            setActivePage("overview");
-            setMobileNavOpen(false);
-          }}
+          onClick={() => switchTab("overview")}
         >
           <Icon name="overview" size={19} />
           <span>Overview</span>
@@ -253,10 +426,7 @@ export function App() {
 
         <button
           className={`nav-item ${activePage === "employees" ? "active" : ""}`}
-          onClick={() => {
-            setActivePage("employees");
-            setMobileNavOpen(false);
-          }}
+          onClick={() => switchTab("employees")}
         >
           <Icon name="people" size={19} />
           <span>Employees</span>
@@ -265,10 +435,7 @@ export function App() {
 
         <button
           className={`nav-item ${activePage === "analytics" ? "active" : ""}`}
-          onClick={() => {
-            setActivePage("analytics");
-            setMobileNavOpen(false);
-          }}
+          onClick={() => switchTab("analytics")}
         >
           <Icon name="chart" size={19} />
           <span>Pay Intelligence</span>
@@ -390,13 +557,13 @@ export function App() {
               <div className="heading-actions">
                 <button
                   className="secondary-button"
-                  onClick={() => setActivePage("analytics")}
+                  onClick={() => switchTab("analytics")}
                 >
                   <Icon name="chart" size={16} /> Pay Intelligence
                 </button>
                 <button
                   className="primary-button"
-                  onClick={() => setActivePage("employees")}
+                  onClick={() => switchTab("employees")}
                 >
                   <Icon name="people" size={17} /> View employees
                 </button>
@@ -407,11 +574,11 @@ export function App() {
           {activePage === "overview" && (
             <Overview
               stats={stats}
-              onNavigateToTab={setActivePage}
+              onNavigateToTab={switchTab}
               onFilterCountry={(c) => {
                 setCountry(c);
                 setPage(1);
-                setActivePage("employees");
+                switchTab("employees");
               }}
               childrenSnippetTable={
                 <EmployeeDirectory
@@ -434,7 +601,7 @@ export function App() {
                   onSelectEmployee={openEmployee}
                   stats={stats}
                   isOverviewSnippet
-                  onViewAll={() => setActivePage("employees")}
+                  onViewAll={() => switchTab("employees")}
                 />
               }
             />
@@ -467,6 +634,10 @@ export function App() {
             <PayIntelligence
               stats={stats}
               onNavigateToDirectory={handleCohortDrilldown}
+              activeQuestion={analyticsQuestion}
+              onQuestionChange={setAnalyticsQuestion}
+              selectedDept={analyticsDept}
+              onDeptChange={setAnalyticsDept}
             />
           )}
 

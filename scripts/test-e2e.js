@@ -161,6 +161,15 @@ try {
   await dialog.getByRole("button", { name: "Done" }).click();
   await dialog.waitFor({ state: "hidden" });
 
+  // Test 6: Verify Tab State & Filter Persistence Across Refresh
+  await page.goto(`${appUrl}/?tab=analytics&question=percentiles`, { waitUntil: "networkidle" });
+  await page.getByText("Percentile Distribution & Pay Equity Ratio").waitFor();
+  await page.reload({ waitUntil: "networkidle" });
+  await page.getByText("Percentile Distribution & Pay Equity Ratio").waitFor();
+  assert.ok(page.url().includes("tab=analytics"));
+  assert.ok(page.url().includes("question=percentiles"));
+  console.log("✔ Tab state and query parameters persistence across refresh verified");
+
   console.log("\nAll browser UI interaction tests passed successfully! 🎉");
 } catch (error) {
   console.error("E2E Test Failed:", error);

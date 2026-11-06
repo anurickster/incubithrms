@@ -2,11 +2,24 @@ import { useState } from "react";
 import { formatCompactCount, formatMoney } from "../lib/format.js";
 import { Icon } from "./Icons.jsx";
 
-export function PayIntelligence({ stats, onNavigateToDirectory }) {
-  const [activeQuestion, setActiveQuestion] = useState("bands");
-  const [selectedDept, setSelectedDept] = useState("Engineering");
+export function PayIntelligence({
+  stats,
+  onNavigateToDirectory,
+  activeQuestion: controlledQuestion,
+  onQuestionChange,
+  selectedDept: controlledDept,
+  onDeptChange,
+}) {
+  const [internalQuestion, setInternalQuestion] = useState("bands");
+  const [internalDept, setInternalDept] = useState("Engineering");
   const [cohortCountry, setCohortCountry] = useState(stats?.countries?.[0]?.country || "United States");
   const [cohortDept, setCohortDept] = useState("Engineering");
+
+  const activeQuestion = controlledQuestion !== undefined ? controlledQuestion : internalQuestion;
+  const setActiveQuestion = onQuestionChange || setInternalQuestion;
+
+  const selectedDept = controlledDept !== undefined ? controlledDept : internalDept;
+  const setSelectedDept = onDeptChange || setInternalDept;
 
   const currencies = stats?.currencies ?? [];
   const departments = stats?.departments ?? [];
@@ -270,4 +283,3 @@ export function PayIntelligence({ stats, onNavigateToDirectory }) {
     </div>
   );
 }
-

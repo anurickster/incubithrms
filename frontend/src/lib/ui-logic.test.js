@@ -73,4 +73,54 @@ describe("Frontend UI & Interaction Logic Tests", () => {
       "page=2&page_size=25&q=Aisha&country=India&department=Engineering&currency=INR"
     );
   });
+
+  test("parses URL query parameters into independent application states", () => {
+    function parseQueryString(qs) {
+      const params = new URLSearchParams(qs);
+      const rawTab = params.get("tab") || "overview";
+      const tab = ["overview", "employees", "analytics"].includes(rawTab) ? rawTab : "overview";
+      const rawPage = parseInt(params.get("page") || "1", 10);
+      const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+      const query = params.get("q") || "";
+      const country = params.get("country") || "";
+      const department = params.get("department") || "";
+      const currency = params.get("currency") || "";
+      const sort = params.get("sort") || "employee_id";
+      const direction = params.get("direction") === "desc" ? "desc" : "asc";
+      const employeeId = params.get("employee") || "";
+      const question = params.get("question") || "bands";
+      const dept = params.get("dept") || "Engineering";
+
+      return {
+        tab,
+        page,
+        query,
+        country,
+        department,
+        currency,
+        sort,
+        direction,
+        employeeId,
+        question,
+        dept,
+      };
+    }
+
+    // Refreshing on Pay Intelligence keeps tab and sub-question
+    const state1 = parseQueryString("?tab=analytics&question=percentiles");
+    assert.equal(state1.tab, "analytics");
+    assert.equal(state1.question, "percentiles");
+
+    // Refreshing on filtered employees keeps query, country, and page
+    const state2 = parseQueryString("?tab=employees&q=Aarav&country=India&page=3");
+    assert.equal(state2.tab, "employees");
+    assert.equal(state2.query, "Aarav");
+    assert.equal(state2.country, "India");
+    assert.equal(state2.page, 3);
+
+    // Refreshing on modal view keeps open employee
+    const state3 = parseQueryString("?tab=employees&employee=ACME-00042");
+    assert.equal(state3.tab, "employees");
+    assert.equal(state3.employeeId, "ACME-00042");
+  });
 });
