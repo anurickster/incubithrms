@@ -32,7 +32,7 @@ sequenceDiagram
     DB-->>API: Original response
     API->>DB: COMMIT
   else New key
-    API->>DB: Read current salary and validate date/change
+    API->>DB: Read current salary; compare expected date and validate change
     API->>DB: Update employee
     API->>DB: Insert history and audit event
     API->>DB: Insert key, normalized request, and response
@@ -41,7 +41,7 @@ sequenceDiagram
   API-->>UI: Updated profile / original response
 ```
 
-A conflicting key returns 409 without mutation. An error in any write rolls back the transaction. Existing keys without a request fingerprint are retained but cannot replay. History/audit records are append-only through the application API; this is not a tamper-proof database or authenticated audit system.
+A conflicting key or stale expected salary date returns 409 without mutation. The browser always supplies its originally read salary date and offers a reload action for conflicts. An error in any write rolls back the transaction. Existing keys without a request fingerprint are retained but cannot replay. History/audit records are append-only through the application API; this is not a tamper-proof database or authenticated audit system.
 
 ## Statistics and deployment
 

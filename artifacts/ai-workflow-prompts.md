@@ -25,5 +25,9 @@ Corrections and checks:
 
 Interactive browser checks use Anurag's Chrome profile. Automated tests and video recording use a disposable browser and temporary synthetic database. No genuine employee data is sent to an AI service by the application, and the product has no LLM integration.
 
+## Reliability review
+
+The review added optimistic stale-edit detection with an inline recovery action, full-name and literal substring search shared by CSV export, and descending-name-sort/allowlist fixes. Regression tests and a browser scenario exercise the complete stale-save/reload/resubmit flow. The README includes an evaluator walkthrough and explains transactions, retries, stale writes, and production limits.
+
 ## Remaining human decisions
 The free Render deployment and live API/UI checks are complete, with evidence in `deployment-verification.json`. Send the final repository/live-app/video links in the original email thread. These steps are not implied by a local test pass.

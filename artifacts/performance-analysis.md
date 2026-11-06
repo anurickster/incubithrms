@@ -2,16 +2,16 @@
 
 Run `npm run benchmark` to measure service calls against a freshly seeded, temporary SQLite database. Raw results are committed in [performance-results.json](performance-results.json), including timestamp, Node/platform/CPU, sample counts, payload sizes, and query plan.
 
-The recorded run used Node 22.22.3 on an Apple M4. It inserted 10,000 employees and 10,000 baseline history records in about 63 ms; a second seed inserted zero employees. Each query measurement warms up five times, then samples 20 calls and reports median and P95. This is a local microbenchmark, not an HTTP load test or deployed performance guarantee.
+The recorded run used Node 22.22.3 on an Apple M4. It inserted 10,000 employees and 10,000 baseline history records in about 61 ms; a second seed inserted zero employees. Each query measurement warms up five times, then samples 20 calls and reports median and P95. This is a local microbenchmark, not an HTTP load test or deployed performance guarantee.
 
 | Operation | Median | P95 | Response bytes |
 |---|---:|---:|---:|
-| Directory, 10 rows | 0.037 ms | 0.053 ms | 2,929 |
-| Substring search | 1.313 ms | 1.477 ms | 2,920 |
-| Germany + Engineering directory | 0.049 ms | 0.083 ms | 2,955 |
-| Organization statistics | 11.866 ms | 13.069 ms | 73,845 |
-| Germany + Engineering statistics | 0.101 ms | 0.110 ms | 1,432 |
-| Full CSV export | 16.161 ms | 17.917 ms | 1,226,771 |
+| Directory, 10 rows | 0.039 ms | 0.054 ms | 2,929 |
+| Substring/full-name search | 2.534 ms | 2.587 ms | 2,920 |
+| Germany + Engineering directory | 0.052 ms | 0.061 ms | 2,955 |
+| Organization statistics | 12.269 ms | 13.197 ms | 73,845 |
+| Germany + Engineering statistics | 0.101 ms | 0.140 ms | 1,432 |
+| Full CSV export | 16.144 ms | 16.594 ms | 1,226,771 |
 
 Compression sizes in the raw JSON are estimates from Node's gzip function. The application server does not itself apply gzip; estimates are not observed network payloads.
 
