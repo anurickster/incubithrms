@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { formatMoney } from "../lib/format.js";
 import { Avatar } from "./EmployeeDirectory.jsx";
 import { Icon } from "./Icons.jsx";
+import { dateAfter, todayUtc } from "../lib/dates.js";
 
 export function EmployeeModal({
   selectedEmployee,
@@ -13,10 +14,11 @@ export function EmployeeModal({
 }) {
   const [editing, setEditing] = useState(false);
   const modalRef = useRef(null);
+  const isOpen = Boolean(selectedEmployee);
 
   // Focus trapping and keyboard accessibility (Escape key, Tab cycling)
-  useEffect(() => {
-    if (!selectedEmployee) return;
+  useLayoutEffect(() => {
+    if (!isOpen) return;
 
     const previousActiveElement = document.activeElement;
     const modalElement = modalRef.current;
@@ -31,12 +33,10 @@ export function EmployeeModal({
     };
 
     // Auto-focus the close button or first interactive control
-    const timer = setTimeout(() => {
-      const focusables = getFocusables();
-      if (focusables.length > 0 && !modalElement.contains(document.activeElement)) {
-        focusables[0].focus();
-      }
-    }, 50);
+    const focusables = getFocusables();
+    if (focusables.length > 0 && !modalElement.contains(document.activeElement)) {
+      focusables[0].focus();
+    }
 
     function handleKeyDown(event) {
       if (event.key === "Escape") {
@@ -68,34 +68,20 @@ export function EmployeeModal({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => {
-      clearTimeout(timer);
       window.removeEventListener("keydown", handleKeyDown);
       if (previousActiveElement && typeof previousActiveElement.focus === "function") {
         previousActiveElement.focus();
       }
     };
-  }, [selectedEmployee, editing, modalLoading, onClose]);
+  }, [isOpen, onClose]);
 
   if (!selectedEmployee) return null;
 
-  function dateAfter(value) {
-    if (!value) return "";
-    const [year, month, day] = value.split("-").map(Number);
-    return new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
-  }
-
-  function localToday() {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
-      now.getDate()
-    ).padStart(2, "0")}`;
-  }
-
   const minimumEffectiveDate = dateAfter(selectedEmployee.salary_effective_date);
-  const salaryChangeUnavailable = minimumEffectiveDate > localToday();
+  const salaryChangeUnavailable = minimumEffectiveDate > todayUtc();
   const defaultEffectiveDate = salaryChangeUnavailable
-    ? localToday()
-    : [localToday(), minimumEffectiveDate].sort().at(-1);
+    ? todayUtc()
+    : [todayUtc(), minimumEffectiveDate].sort().at(-1);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -205,7 +191,7 @@ export function EmployeeModal({
                   name="effective_date"
                   type="date"
                   min={minimumEffectiveDate}
-                  max={localToday()}
+                  max={todayUtc()}
                   defaultValue={defaultEffectiveDate}
                   required
                   disabled={salaryChangeUnavailable}

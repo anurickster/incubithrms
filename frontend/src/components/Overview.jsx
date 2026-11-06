@@ -98,7 +98,7 @@ export function Overview({
           </div>
           <h3>Answer questions on how ACME pays its workforce</h3>
           <p>
-            Explore role-level pay bands, 25th–75th percentile salary distributions, and cross-cohort equity without spreadsheet formulas.
+            Explore role-level pay bands, 25th–75th percentile salary distributions, and country and department benchmarks without spreadsheet formulas.
           </p>
         </div>
         <button

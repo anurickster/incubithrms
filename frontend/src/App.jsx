@@ -4,78 +4,13 @@ import { EmployeeModal } from "./components/EmployeeModal.jsx";
 import { Icon } from "./components/Icons.jsx";
 import { Overview } from "./components/Overview.jsx";
 import { PayIntelligence } from "./components/PayIntelligence.jsx";
+import { request } from "./lib/api.js";
+import { parseUrlState, serializeUrlState } from "./lib/navigation.js";
 
 const PAGE_SIZE = 10;
 
-export function getInitialUrlState() {
-  if (typeof window === "undefined") {
-    return {
-      tab: "overview",
-      page: 1,
-      query: "",
-      country: "",
-      department: "",
-      currency: "",
-      sort: "employee_id",
-      direction: "asc",
-      employeeId: "",
-      question: "bands",
-      dept: "Engineering",
-    };
-  }
-  const params = new URLSearchParams(window.location.search);
-  const rawTab = params.get("tab") || "overview";
-  const tab = ["overview", "employees", "analytics"].includes(rawTab) ? rawTab : "overview";
-  const rawPage = parseInt(params.get("page") || "1", 10);
-  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
-  const query = params.get("q") || "";
-  const country = params.get("country") || "";
-  const department = params.get("department") || "";
-  const currency = params.get("currency") || "";
-  const sort = params.get("sort") || "employee_id";
-  const direction = params.get("direction") === "desc" ? "desc" : "asc";
-  const employeeId = params.get("employee") || "";
-  const question = params.get("question") || "bands";
-  const dept = params.get("dept") || "Engineering";
-
-  return {
-    tab,
-    page,
-    query,
-    country,
-    department,
-    currency,
-    sort,
-    direction,
-    employeeId,
-    question,
-    dept,
-  };
-}
-
-async function request(path, options) {
-  try {
-    const response = await fetch(path, {
-      ...options,
-      headers: { "Content-Type": "application/json", ...options?.headers },
-    });
-    const payload = await response.json();
-    if (!response.ok) {
-      throw new Error(payload.error || "Something went wrong. Please try again.");
-    }
-    return payload;
-  } catch (err) {
-    if (err.name === "TypeError" && (err.message.includes("fetch") || err.message.includes("network"))) {
-      throw new Error(
-        "Unable to connect to the backend API server. Please ensure the API is running at http://127.0.0.1:8000 (npm run api)."
-      );
-    }
-    throw err;
-  }
-}
-
 export function App() {
-  const initialUrlState = useMemo(() => getInitialUrlState(), []);
+  const initialUrlState = useMemo(() => parseUrlState(window.location.search), []);
 
   const [activePage, setActivePage] = useState(initialUrlState.tab);
   const [stats, setStats] = useState(null);
@@ -95,11 +30,15 @@ export function App() {
   const [directoryLoading, setDirectoryLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [employeeId, setEmployeeId] = useState(initialUrlState.employeeId);
+  const [cohortCountry, setCohortCountry] = useState(initialUrlState.cohortCountry);
+  const [cohortDepartment, setCohortDepartment] = useState(initialUrlState.cohortDepartment);
   const [modalLoading, setModalLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
+  const salaryAttempt = useRef(null);
   const employeeRequestGeneration = useRef(0);
   const employeeQuery = useRef(null);
   employeeQuery.current = { page, sort, direction, query, country, department, currency };
@@ -110,82 +49,23 @@ export function App() {
     return () => window.clearTimeout(timer);
   }, [queryInput]);
 
-  // Synchronize active state with URL Query Parameters so refresh / sharing preserves full state
+  // Keep the requested employee ID while its profile is loading.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    const params = url.searchParams;
-
-    params.set("tab", activePage);
-
-    if (activePage === "employees") {
-      if (query) params.set("q", query); else params.delete("q");
-      if (country) params.set("country", country); else params.delete("country");
-      if (department) params.set("department", department); else params.delete("department");
-      if (currency) params.set("currency", currency); else params.delete("currency");
-      if (page > 1) params.set("page", String(page)); else params.delete("page");
-      if (sort !== "employee_id") params.set("sort", sort); else params.delete("sort");
-      if (direction !== "asc") params.set("direction", direction); else params.delete("direction");
-      params.delete("question");
-      params.delete("dept");
-    } else if (activePage === "analytics") {
-      if (analyticsQuestion && analyticsQuestion !== "bands") {
-        params.set("question", analyticsQuestion);
-      } else {
-        params.delete("question");
-      }
-      if (analyticsDept && analyticsDept !== "Engineering") {
-        params.set("dept", analyticsDept);
-      } else {
-        params.delete("dept");
-      }
-      params.delete("q");
-      params.delete("country");
-      params.delete("department");
-      params.delete("currency");
-      params.delete("page");
-      params.delete("sort");
-      params.delete("direction");
-    } else {
-      params.delete("q");
-      params.delete("country");
-      params.delete("department");
-      params.delete("currency");
-      params.delete("page");
-      params.delete("sort");
-      params.delete("direction");
-      params.delete("question");
-      params.delete("dept");
+    const search = serializeUrlState({
+      tab: activePage, page, query, country, department, currency, sort, direction,
+      employeeId, question: analyticsQuestion, dept: analyticsDept,
+      cohortCountry, cohortDepartment,
+    });
+    if (window.location.search !== search) {
+      window.history.replaceState(null, "", `${window.location.pathname}${search}`);
     }
-
-    if (selectedEmployee) {
-      params.set("employee", selectedEmployee.employee_id);
-    } else {
-      params.delete("employee");
-    }
-
-    const newSearch = params.toString() ? `?${params.toString()}` : "";
-    if (window.location.search !== newSearch) {
-      window.history.replaceState(null, "", `${url.pathname}${newSearch}`);
-    }
-  }, [
-    activePage,
-    page,
-    query,
-    country,
-    department,
-    currency,
-    sort,
-    direction,
-    selectedEmployee,
-    analyticsQuestion,
-    analyticsDept,
-  ]);
+  }, [activePage, page, query, country, department, currency, sort, direction,
+    employeeId, analyticsQuestion, analyticsDept, cohortCountry, cohortDepartment]);
 
   // Handle browser back/forward buttons (popstate)
   useEffect(() => {
     function handlePopState() {
-      const state = getInitialUrlState();
+      const state = parseUrlState(window.location.search);
       setActivePage(state.tab);
       setPage(state.page);
       setQueryInput(state.query);
@@ -197,29 +77,44 @@ export function App() {
       setDirection(state.direction);
       setAnalyticsQuestion(state.question);
       setAnalyticsDept(state.dept);
-      if (state.employeeId) {
-        request(`/api/employees/${encodeURIComponent(state.employeeId)}`)
-          .then(setSelectedEmployee)
-          .catch(() => setSelectedEmployee(null));
-      } else {
-        setSelectedEmployee(null);
-      }
+      setCohortCountry(state.cohortCountry);
+      setCohortDepartment(state.cohortDepartment);
+      setEmployeeId(state.employeeId);
     }
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  // On initial mount: if URL contains an employee ID, open their modal directly
   useEffect(() => {
-    const initial = getInitialUrlState();
-    if (initial.employeeId) {
-      setModalLoading(true);
-      request(`/api/employees/${encodeURIComponent(initial.employeeId)}`)
-        .then(setSelectedEmployee)
-        .catch(() => {})
-        .finally(() => setModalLoading(false));
+    if (!employeeId) {
+      setSelectedEmployee(null);
+      setModalLoading(false);
+      return;
     }
+    const controller = new AbortController();
+    setModalLoading(true);
+    request(`/api/employees/${encodeURIComponent(employeeId)}`, { signal: controller.signal })
+      .then((employee) => {
+        if (!controller.signal.aborted) setSelectedEmployee(employee);
+      })
+      .catch((cause) => {
+        if (!controller.signal.aborted) {
+          setError(cause.message);
+          setEmployeeId("");
+          setSelectedEmployee(null);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setModalLoading(false);
+      });
+    return () => controller.abort();
+  }, [employeeId]);
+
+  const closeEmployee = useCallback(() => {
+    setEmployeeId("");
+    setSelectedEmployee(null);
+    setError("");
   }, []);
 
   const loadStats = useCallback(async () => {
@@ -325,34 +220,38 @@ export function App() {
     setPage(1);
   }
 
-  async function openEmployee(employee) {
-    setSelectedEmployee(employee);
+  function openEmployee(employee) {
     setModalLoading(true);
-    try {
-      const full = await request(`/api/employees/${encodeURIComponent(employee.employee_id)}`);
-      setSelectedEmployee(full);
-    } catch (cause) {
-      setError(cause.message);
-    } finally {
-      setModalLoading(false);
-    }
+    setSelectedEmployee(employee);
+    setEmployeeId(employee.employee_id);
   }
 
   async function saveSalary(payload) {
     setSaving(true);
     setError("");
+    const body = JSON.stringify(payload);
+    const signature = `${selectedEmployee.employee_id}:${body}`;
+    if (salaryAttempt.current?.signature !== signature) {
+      salaryAttempt.current = { signature, key: crypto.randomUUID() };
+    }
     try {
       const updated = await request(
         `/api/employees/${encodeURIComponent(selectedEmployee.employee_id)}`,
         {
           method: "PATCH",
-          body: JSON.stringify(payload),
+          body,
+          headers: { "Idempotency-Key": salaryAttempt.current.key },
         }
       );
+      salaryAttempt.current = null;
       setSelectedEmployee(updated);
       setNotice(`Salary updated for ${updated.first_name} ${updated.last_name}.`);
-      const [, nextEmployees] = await Promise.all([loadStats(), loadEmployees()]);
-      applyEmployeeResponse(nextEmployees);
+      try {
+        const [, nextEmployees] = await Promise.all([loadStats(), loadEmployees()]);
+        applyEmployeeResponse(nextEmployees);
+      } catch {
+        setError("Salary saved. Dashboard refresh failed; use Retry to reload the latest figures.");
+      }
       return true;
     } catch (cause) {
       setError(cause.message);
@@ -363,6 +262,9 @@ export function App() {
   }
 
   function handleCohortDrilldown({ country: cohortCountry, department: cohortDept }) {
+    setQueryInput("");
+    setQuery("");
+    setCurrency("");
     setCountry(cohortCountry);
     setDepartment(cohortDept);
     setPage(1);
@@ -495,7 +397,7 @@ export function App() {
             </span>
             <span className="topbar-divider" />
             <span className="topbar-date">
-              <Icon name="clock" size={15} /> November 5, 2026
+              <Icon name="clock" size={15} /> {new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
             </span>
           </div>
         </header>
@@ -535,7 +437,7 @@ export function App() {
           <div className="page-heading">
             <div>
               <div className="eyebrow">
-                THURSDAY, NOVEMBER 5, 2026 <span className="eyebrow-spark">✳</span> PEOPLE OPERATIONS
+                {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }).toUpperCase()} <span className="eyebrow-spark">✳</span> PEOPLE OPERATIONS
               </div>
               <h1>
                 {activePage === "overview"
@@ -549,7 +451,7 @@ export function App() {
                   ? "A clear picture of how your organization pays people across 10 countries."
                   : activePage === "employees"
                   ? "Search, filter, and manage compensation across your 10,000 employees."
-                  : "Answering strategic questions on role bands, salary percentiles, and pay equity."}
+                  : "Answering strategic questions on role bands, salary percentiles, and pay dispersion."}
               </p>
             </div>
 
@@ -638,6 +540,10 @@ export function App() {
               onQuestionChange={setAnalyticsQuestion}
               selectedDept={analyticsDept}
               onDeptChange={setAnalyticsDept}
+              cohortCountry={cohortCountry}
+              onCohortCountryChange={setCohortCountry}
+              cohortDepartment={cohortDepartment}
+              onCohortDepartmentChange={setCohortDepartment}
             />
           )}
 
@@ -653,12 +559,10 @@ export function App() {
       </main>
 
       <EmployeeModal
+        key={employeeId}
         selectedEmployee={selectedEmployee}
         modalLoading={modalLoading}
-        onClose={() => {
-          setSelectedEmployee(null);
-          setError("");
-        }}
+        onClose={closeEmployee}
         onSaveSalary={saveSalary}
         visibleCurrencies={visibleCurrencies}
         saving={saving}
