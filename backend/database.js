@@ -9,7 +9,7 @@ const __dirname = dirname(__filename);
 export const ROOT = resolve(__dirname, "..");
 export const DEFAULT_DB_PATH = resolve(ROOT, "data", "salaries.sqlite3");
 
-// Connection cache to reuse handles, keep SQLite page cache hot, and prevent repeated disk open/close overhead
+// One reusable synchronous connection per database path; this is not a worker pool.
 const connectionPool = new Map();
 
 export function getDatabasePath(customPath) {
@@ -41,7 +41,7 @@ export function openDatabase(customPath) {
   db.exec("PRAGMA foreign_keys = ON;");
   db.exec("PRAGMA busy_timeout = 10000;");
 
-  // WAL mode for superior concurrent read/write throughput
+  // WAL supports other database connections reading while this connection writes.
   if (dbPath !== ":memory:") {
     try {
       db.exec("PRAGMA journal_mode = WAL;");
@@ -132,6 +132,7 @@ export function initializeDatabase(customPath) {
     CREATE TABLE IF NOT EXISTS idempotency_keys (
       key TEXT PRIMARY KEY,
       employee_id TEXT NOT NULL,
+      request_json TEXT NOT NULL,
       response_json TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -139,5 +140,11 @@ export function initializeDatabase(customPath) {
     CREATE INDEX IF NOT EXISTS idx_idempotency_keys_created
       ON idempotency_keys(created_at);
   `);
+  // Keep existing demo databases usable. Old keys have no request fingerprint
+  // and are rejected on replay rather than being trusted for a different request.
+  const columns = db.prepare("PRAGMA table_info(idempotency_keys)").all();
+  if (!columns.some((column) => column.name === "request_json")) {
+    db.exec("ALTER TABLE idempotency_keys ADD COLUMN request_json TEXT;");
+  }
   return db;
 }

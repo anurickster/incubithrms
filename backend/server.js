@@ -8,6 +8,7 @@ import { closeAllDatabases, getDatabasePath, initializeDatabase, ROOT } from "./
 import { seedDatabase } from "./seed.js";
 import {
   checkDatabaseHealth,
+  ConflictError,
   exportEmployeesCsv,
   getEmployee,
   getStats,
@@ -265,7 +266,9 @@ export function createSalaryHandler(options = {}) {
 
       sendJson(res, 405, { error: "Method not allowed." });
     } catch (err) {
-      if (err instanceof ValidationError) {
+      if (err instanceof ConflictError) {
+        sendJson(res, 409, { error: err.message });
+      } else if (err instanceof ValidationError) {
         sendJson(res, 400, { error: err.message });
       } else {
         console.error("Internal server error:", err);

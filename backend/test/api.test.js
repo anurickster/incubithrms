@@ -254,6 +254,29 @@ describe("Salary API HTTP Tests", () => {
     assert.match(res.data.error, /Future salary changes are not supported/);
   });
 
+  test("conflicting idempotency payload or employee returns 409", async () => {
+    const headers = { "idempotency-key": "conflicting-retry" };
+    const body = { base_salary: "70000.00", currency: "INR", effective_date: "2021-01-01" };
+    const first = await dispatchRequest(handler, { method: "PATCH", url: "/api/employees/ACME-TEST01", headers, body });
+    assert.equal(first.status, 200);
+    for (const change of [
+      { url: "/api/employees/OTHER", body },
+      { url: "/api/employees/ACME-TEST01", body: { ...body, base_salary: 80000 } },
+    ]) {
+      const conflict = await dispatchRequest(handler, { method: "PATCH", headers, ...change });
+      assert.equal(conflict.status, 409);
+      assert.match(conflict.data.error, /different employee or salary change/);
+    }
+  });
+
+  test("GET /api/stats respects the selected country and department", async () => {
+    const matching = await dispatchRequest(handler, { url: "/api/stats?country=India&department=Engineering" });
+    assert.equal(matching.data.employee_count, 1);
+    const empty = await dispatchRequest(handler, { url: "/api/stats?country=Germany&department=Engineering" });
+    assert.equal(empty.data.employee_count, 0);
+    assert.deepEqual(empty.data.currencies, []);
+  });
+
   test("PATCH /api/employees/:id rejects invalid salary amounts", async () => {
     const today = new Date().toISOString().slice(0, 10);
     const res = await dispatchRequest(handler, {

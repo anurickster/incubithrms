@@ -7,6 +7,13 @@ export class ValidationError extends Error {
   }
 }
 
+export class ConflictError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "ConflictError";
+  }
+}
+
 export const SORT_COLUMNS = {
   employee_id: "employee_id",
   name: "last_name COLLATE NOCASE",
@@ -204,14 +211,10 @@ export function updateSalary(employeeId, payload, options = {}) {
   initializeDatabase(dbPath);
   const db = openDatabase(dbPath);
 
-  // Idempotency check: if request was already processed with this key, return cached response
-  if (idempotencyKey) {
-    const cached = db.prepare("SELECT response_json FROM idempotency_keys WHERE key = ?").get(idempotencyKey);
-    if (cached) {
-      try {
-        return JSON.parse(cached.response_json);
-      } catch {}
-    }
+  if (idempotencyKey !== undefined && (
+    typeof idempotencyKey !== "string" || !idempotencyKey.trim() || idempotencyKey.length > 200
+  )) {
+    throw new ValidationError("Idempotency key must contain between 1 and 200 characters.");
   }
 
   const salaryCents = validateSalaryInput(payload.base_salary);
@@ -226,25 +229,41 @@ export function updateSalary(employeeId, payload, options = {}) {
   }
 
   const effectiveDate = validateEffectiveDate(payload.effective_date);
+  const requestJson = JSON.stringify({ salary_cents: salaryCents, currency, effective_date: effectiveDate });
 
-  const current = db
-    .prepare("SELECT base_salary_cents, currency, salary_effective_date FROM employees WHERE employee_id = ?")
-    .get(employeeId);
-
-  if (!current) {
-    return null;
-  }
-
-  if (effectiveDate <= current.salary_effective_date) {
-    throw new ValidationError("Effective date must be later than the current salary date.");
-  }
-
-  if (salaryCents === current.base_salary_cents && currency === current.currency) {
-    throw new ValidationError("Enter a salary or currency different from the current values.");
-  }
-
+  // The lock covers the replay check, current-value read, mutation, and cached
+  // response. A failed cache write must roll back the salary and audit records.
   db.exec("BEGIN IMMEDIATE;");
   try {
+    if (idempotencyKey) {
+      const cached = db.prepare("SELECT employee_id, request_json, response_json FROM idempotency_keys WHERE key = ?").get(idempotencyKey);
+      if (cached) {
+        if (cached.employee_id !== employeeId || cached.request_json !== requestJson) {
+          throw new ConflictError("Idempotency key has already been used for a different employee or salary change.");
+        }
+        const response = JSON.parse(cached.response_json);
+        db.exec("COMMIT;");
+        return response;
+      }
+    }
+
+    const current = db
+      .prepare("SELECT base_salary_cents, currency, salary_effective_date FROM employees WHERE employee_id = ?")
+      .get(employeeId);
+
+    if (!current) {
+      db.exec("COMMIT;");
+      return null;
+    }
+
+    if (effectiveDate <= current.salary_effective_date) {
+      throw new ValidationError("Effective date must be later than the current salary date.");
+    }
+
+    if (salaryCents === current.base_salary_cents && currency === current.currency) {
+      throw new ValidationError("Enter a salary or currency different from the current values.");
+    }
+
     db.prepare(`
       UPDATE employees
       SET base_salary_cents = ?, currency = ?, salary_effective_date = ?
@@ -274,7 +293,15 @@ export function updateSalary(employeeId, payload, options = {}) {
       VALUES (?, 'salary.updated', 'Local HR Manager', ?)
     `).run(employeeId, details);
 
+    const updated = getEmployee(employeeId, dbPath);
+    if (idempotencyKey) {
+      db.prepare(`
+        INSERT INTO idempotency_keys (key, employee_id, request_json, response_json)
+        VALUES (?, ?, ?, ?)
+      `).run(idempotencyKey, employeeId, requestJson, JSON.stringify(updated));
+    }
     db.exec("COMMIT;");
+    return updated;
   } catch (err) {
     try {
       db.exec("ROLLBACK;");
@@ -285,19 +312,6 @@ export function updateSalary(employeeId, payload, options = {}) {
     throw err;
   }
 
-  const updated = getEmployee(employeeId, dbPath);
-
-  // Store response for idempotency replay
-  if (idempotencyKey && updated) {
-    try {
-      db.prepare(`
-        INSERT OR REPLACE INTO idempotency_keys (key, employee_id, response_json)
-        VALUES (?, ?, ?)
-      `).run(idempotencyKey, employeeId, JSON.stringify(updated));
-    } catch {}
-  }
-
-  return updated;
 }
 
 function calculatePercentile(sortedCents, p) {
@@ -322,28 +336,39 @@ export function checkDatabaseHealth(dbPath) {
 
 export function getStats({ dbPath, country = "", department = "" } = {}) {
   const db = openDatabase(dbPath);
-  const totalCountRow = db.prepare("SELECT COUNT(*) AS total FROM employees").get();
+  const clauses = [];
+  const params = [];
+  if (country) {
+    clauses.push("country = ?");
+    params.push(country);
+  }
+  if (department) {
+    clauses.push("department = ?");
+    params.push(department);
+  }
+  const where = clauses.length ? ` WHERE ${clauses.join(" AND ")}` : "";
+  const totalCountRow = db.prepare(`SELECT COUNT(*) AS total FROM employees${where}`).get(...params);
   const employeeCount = totalCountRow ? Number(totalCountRow.total) : 0;
 
   const countries = db.prepare(`
     SELECT country, COUNT(*) AS headcount
-    FROM employees
+    FROM employees${where}
     GROUP BY country
     ORDER BY headcount DESC, country ASC
-  `).all().map((r) => ({ country: r.country, headcount: Number(r.headcount) }));
+  `).all(...params).map((r) => ({ country: r.country, headcount: Number(r.headcount) }));
 
   const departments = db.prepare(`
     SELECT department, COUNT(*) AS headcount
-    FROM employees
+    FROM employees${where}
     GROUP BY department
     ORDER BY headcount DESC, department ASC
-  `).all().map((r) => ({ department: r.department, headcount: Number(r.headcount) }));
+  `).all(...params).map((r) => ({ department: r.department, headcount: Number(r.headcount) }));
 
   const salaryRows = db.prepare(`
     SELECT country, department, job_title, currency, base_salary_cents
-    FROM employees
+    FROM employees${where}
     ORDER BY currency ASC, base_salary_cents ASC
-  `).all();
+  `).all(...params);
 
   const currencyMap = new Map();
   const countryMap = new Map();
