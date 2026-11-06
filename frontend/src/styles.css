@@ -253,6 +253,8 @@ tbody tr:last-child td { border-bottom: 0; }
 
 .alert { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 14px; padding: 10px 12px; border-radius: 7px; font-size: 11px; }
 .alert button { display: grid; place-items: center; color: inherit; background: transparent; border: 0; }
+.alert-actions { display: flex; align-items: center; gap: 10px; }
+.alert-retry-btn { font-size: 11px; font-weight: 700; text-decoration: underline; color: inherit; padding: 0 4px; }
 .alert-error { color: #a4444d; background: #fff1f1; border: 1px solid #f5d6d7; }
 .alert-success { color: #28775e; background: #eaf8f1; border: 1px solid #cfecdd; }
 .app-loading { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #858b9a; font-size: 12px; }

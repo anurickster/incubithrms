@@ -8,15 +8,24 @@ import { PayIntelligence } from "./components/PayIntelligence.jsx";
 const PAGE_SIZE = 10;
 
 async function request(path, options) {
-  const response = await fetch(path, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...options?.headers },
-  });
-  const payload = await response.json();
-  if (!response.ok) {
-    throw new Error(payload.error || "Something went wrong. Please try again.");
+  try {
+    const response = await fetch(path, {
+      ...options,
+      headers: { "Content-Type": "application/json", ...options?.headers },
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.error || "Something went wrong. Please try again.");
+    }
+    return payload;
+  } catch (err) {
+    if (err.name === "TypeError" && (err.message.includes("fetch") || err.message.includes("network"))) {
+      throw new Error(
+        "Unable to connect to the backend API server. Please ensure the API is running at http://127.0.0.1:8000 (npm run api)."
+      );
+    }
+    throw err;
   }
-  return payload;
 }
 
 export function App() {
@@ -328,9 +337,23 @@ export function App() {
           {error && (
             <div className="alert alert-error" role="alert">
               <span>{error}</span>
-              <button onClick={() => setError("")} aria-label="Dismiss error">
-                <Icon name="close" size={16} />
-              </button>
+              <div className="alert-actions">
+                <button
+                  className="text-button alert-retry-btn"
+                  onClick={() => {
+                    setError("");
+                    loadStats().catch((err) => setError(err.message));
+                    loadEmployees()
+                      .then(applyEmployeeResponse)
+                      .catch((err) => setError(err.message));
+                  }}
+                >
+                  Retry
+                </button>
+                <button onClick={() => setError("")} aria-label="Dismiss error">
+                  <Icon name="close" size={16} />
+                </button>
+              </div>
             </div>
           )}
           {notice && (

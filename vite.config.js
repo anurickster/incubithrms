@@ -6,7 +6,10 @@ export default defineConfig({
   root: ".",
   server: {
     proxy: {
-      "/api": process.env.SALARY_API_URL || "http://127.0.0.1:8000",
+      "/api": {
+        target: process.env.SALARY_API_URL || "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
     },
   },
   build: {
