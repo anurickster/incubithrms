@@ -18,7 +18,13 @@ export async function request(path, options) {
     throw new Error("Unable to reach the salary service. Check your connection and try again.");
   }
   if (!response.ok) {
-    const payload = await response.json().catch(() => null);
+    let payload = await response.json().catch(() => null);
+    if (!payload) {
+      const rawText = await response.text().catch(() => "");
+      if (rawText && rawText.length < 300) {
+        payload = { error: rawText.trim() };
+      }
+    }
     throw new ApiError(payload?.error || "The salary service could not complete this request. Please try again.", response.status);
   }
   return response.json();
